@@ -244,6 +244,33 @@ Withering Touch support. Simmed on a wither-dependent build: swapping that suppo
 config is an **enemy-state assertion** applied whether or not any source exists, so it will happily show the
 upside of a swap that silently removes your only wither. Measure both ends before betting.
 
+### 3e-4. Animate Guardian — a wearable ally-aura, and PoB's third blind spot
+
+The AG is best understood as **a minion you dress in ally-buff uniques**, and the meta kits are two-handed —
+so "what shield for my AG" usually answers itself: **none**.
+
+| Weapon path | Grants the party | Cost class |
+|---|---|---|
+| **Dying Breath** (staff) | 18% increased damage to allies + 18% curse effect on nearby enemies | ~10c |
+| **Kingmaker** (2h axe) | ⭐ ***+10 Fortification* to nearby allies** (≈10% less hit damage taken for the PLAYER) + culling + rarity | tens of div |
+
+Classic kit around it: **Leer Cast** (⭐ current variant = **50%** ally damage — buffed in 3.19; pre-3.19
+memory says 15%) · body/boots for AG survival (Zahndethus, Gruthkul, Doppelgänger) · and the sleeper tech:
+**corruption-implicit gloves** — e.g. `Curse Enemies with Despair on Hit` makes the AG a walking **−15%
+chaos res** debuff (× any curse-effect amplification), which on a chaos/poison build is a damage multiplier
+wearing a glove slot. ✅ Measured on a live build: a Dying Breath + Leer Cast + Despair-implicit AG =
+**+38.3% Full DPS**. ⚠ AG gear is **destroyed if the AG dies** — budget accordingly, give it Minion Life +
+Meat Shield, and feed it the expensive axe only after its survival is proven in your actual content.
+
+⚠⚠ **PoB cannot model ANY of this natively** — verified in source (`CalcActiveSkill.lua`: minion item sets
+supply *weapon data only*; item mods from minion gear are applied to no one). This is the **third class of
+invisible ally power** after unmodeled-spectre buffs (§3e-1) and skill-list auras (§3e). Workaround: a
+**labeled CustomModifierBlock** stating the ally-buff lines explicitly (`Minions deal N% increased Damage`,
+`Nearby Enemies have -X% to Chaos Resistance`), with its assumptions (AG alive + nearby, curse uptime)
+written in the title so the block is toggleable and honest. The standing rule, three instances strong:
+**PoB models none of the buffs your minions grant unless forced to, and each grant class needs its own
+workaround.**
+
 ### 3f. Auras & reservation
 Typical: Anger+Generosity, Skitterbots, Purity of Elements, **Envy via United in Dream** (✅ measured ~87%
 of a poison build's damage — dropping it is a build-defining decision, not a tweak). ⚠ Reservation maxes
