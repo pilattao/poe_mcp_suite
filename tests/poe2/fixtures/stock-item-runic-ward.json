@@ -1,0 +1,19 @@
+{
+  "path": "Modules/ModParser.lua",
+  "description": "Complete native Runic Ward grammar including specific Armour/Evasion/EnergyShield scope; merge all replacements into the existing ModParser patch target.",
+  "reference": "PathOfBuilding/src/Modules/ModParser.lua",
+  "replacements": [
+    {
+      "old": "\t[\"ward\"] = \"Ward\",\n",
+      "new": "\t[\"ward\"] = \"Ward\",\n\t[\"runic ward\"] = \"Ward\",\n\t[\"maximum runic ward\"] = \"Ward\",\n"
+    },
+    {
+      "old": "\t[\"armour, evasion and energy shield\"] = \"Defences\",\n",
+      "new": "\t[\"armour, evasion and energy shield\"] = { \"Armour\", \"Evasion\", \"EnergyShield\" },\n"
+    },
+    {
+      "old": "\t[\"as extra maximum energy shield\"] = \"GainAsEnergyShield\",\n",
+      "new": "\t[\"as extra maximum energy shield\"] = \"GainAsEnergyShield\",\n\t[\"as extra maximum runic ward\"] = \"GainAsWard\",\n"
+    }
+  ]
+}

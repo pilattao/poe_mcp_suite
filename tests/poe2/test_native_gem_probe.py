@@ -18,6 +18,9 @@ def test_probe_targets_verified_roles_and_preserves_source_gem_references():
     assert cases[3]['params']['groupIndex']==16
     assert cases[3]['params']['setups'][1]['gems']==[{'refIndex':1},{'gemId':'fixture-support'}]
     assert cases[4]['invalid_first'] is True
+    assert cases[5]['params']['resourceOnly'] is True
+    assert cases[5]['params']['evaluationGroupIndex']==11
+    assert cases[5]['params']['setups'][1]['gems'][0]=={'refIndex':1,'level':19}
     assert skills['groups'][1]['gems'][0]['level']==20
 
 

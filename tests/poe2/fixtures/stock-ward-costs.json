@@ -1,0 +1,38 @@
+{
+  "scope": "Stock PoB2 native Ward costs only; does not add infusion uptime or a whole-combat simulation",
+  "native_reference_commit": "ce566eac45ea8a86477f513c7ee65a1ebe60014e",
+  "native_reference_url": "https://github.com/PathOfBuildingCommunity/PathOfBuilding-PoE2/blob/ce566eac45ea8a86477f513c7ee65a1ebe60014e/src/Modules/CalcOffence.lua",
+  "preconditions": [
+    "Data/Costs.lua already defines Ward, WardPercent, WardPerMinute and their native Divisor values",
+    "CalcTools.calcLib.mod already combines resource-specific and generic cost efficiency",
+    "Installer must verify exact input hashes, back up original bytes, and restore them on uninstall",
+    "Applying API files alone does not install this calculator patch"
+  ],
+  "rounding": "Native upfront rounding applies to Ward only in this stock backport. Existing Mana/Life/ES/Soul/Rage calculations are preserved.",
+  "files": [
+    {
+      "path": "Modules/CalcOffence.lua",
+      "original_sha256": "eb76d3d8be967c5bca79062c79cf4693d182b652bb2b2418c07fa7da16f91435",
+      "patched_sha256": "434111b7021eb5046d17561968099ecc66755d93db9fdf89387553911aed9fd2",
+      "line_endings": "LF"
+    },
+    {
+      "path": "Modules/Calcs.lua",
+      "original_sha256": "79e30097b96baf189ef7a71248d6e10e33aa15a6c8d74c01604d62d11bae09fb",
+      "patched_sha256": "1f5536e03547916a57cd65ac9bb6c54ac0bc9dad478dc646e5b9b1cbbbf880d8",
+      "line_endings": "LF"
+    },
+    {
+      "path": "Modules/ModParser.lua",
+      "original_sha256": "01e2668025f70d0212378f815d10b189484d11c7db6e84e77c08c0e1dd068247",
+      "patched_sha256": "b48ff91ce387203e36097f305e26548b2dbad4be44ee4fadef1d47f44e327c9c",
+      "line_endings": "LF"
+    },
+    {
+      "path": "Data/SkillStatMap.lua",
+      "original_sha256": "703857f0c20f7a6a079a5379562a888dca02a2921f4e0e5467f65c531398081c",
+      "patched_sha256": "51ff63db5a991b2e4075a2e039a17230e5a1d259d87b0e7ecd00b6b2108fd18c",
+      "line_endings": "LF"
+    }
+  ]
+}

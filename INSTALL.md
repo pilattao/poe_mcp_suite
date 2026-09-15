@@ -1,3 +1,7 @@
+> **PoE2 branch:** follow [PoE2 setup](docs/poe2/SETUP.md), including the matching
+> native runtime, calculator patches and Windows/WSL launcher. The guide below
+> preserves the upstream installation reference.
+
 # poe_mcp_suite — Installation Guide
 
 This repo is a git submodule container for four MCP servers for Path of Exile, usable with any MCP-compatible AI agent. There is no runnable code here — everything lives in the submodules.

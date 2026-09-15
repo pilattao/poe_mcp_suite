@@ -19,10 +19,63 @@
       "server": "pob",
       "group": "getBuildGoalsToolSchemas",
       "name": "get_passive_upgrades",
-      "description": "Find the best unallocated notable passives to pick up next, ranked by their actual stat impact. Uses calcWith to simulate each candidate and scores by relative DPS/EHP gain.",
+      "description": "Compare connected PoE2 passive upgrade proposals in both weapon sets with native measurements. Preserves zero result/point limits; proposals are not applied.",
       "schema": {
         "type": "object",
         "properties": {
+          "allocation_mode": {
+            "type": "string",
+            "enum": [
+              "shared",
+              "weapon1",
+              "weapon2"
+            ],
+            "description": "Where newly allocated passives belong; native results are measured in both weapon sets."
+          },
+          "candidate_node_ids": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          "remove_node_ids": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          "attribute_choices": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string",
+              "enum": [
+                "str",
+                "dex",
+                "int"
+              ]
+            }
+          },
+          "points_available": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 30,
+            "description": "Explicit spending limit, including zero. Otherwise use known native/quest budget evidence."
+          },
+          "max_candidates": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 40
+          },
+          "max_distance": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 10
+          },
+          "preserve_keystones": {
+            "type": "boolean"
+          },
           "focus": {
             "type": "string",
             "description": "What to optimize for (default: 'both')",
@@ -33,29 +86,33 @@
             ]
           },
           "max_results": {
-            "type": "number",
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 100,
             "description": "Maximum number of upgrade suggestions to return (default: 10)"
           }
         }
       },
-      "status": "not_audited",
-      "evidence": []
+      "status": "partial_contract_verified",
+      "evidence": [
+        "API1.4 actual MCP: balanced3 result used16 native calculations in29.81s; three measured alternatives, both weapon contexts and exact live state preservation verified."
+      ]
     },
     {
       "server": "pob",
       "group": "getBuildGoalsToolSchemas",
       "name": "find_best_anointment",
-      "description": "Rank the best anointable notables for the loaded build by simulating the impact of each anoint via PoB's MiscCalculator (non-destructive, same engine the GUI uses to sort anoints in the item picker). Iterates ALL anointable notables across the tree (~400) — not a keyword-filtered subset. Requires an anointable item equipped in the target slot: any Amulet, or a Cord Belt for the Belt slot.",
+      "description": "Compare native PoE2 instilling candidates using actual item eligibility and native recipes. Reports deltas against both the current and uninstilled item; multiple objectives remain separate, with no fixed combined score.",
       "schema": {
         "type": "object",
         "properties": {
           "slot": {
             "type": "string",
-            "description": "Slot of the anointable item: 'Amulet' or 'Belt' (Belt only works if a Cord Belt is equipped)."
+            "description": "Exact equipped slot. Native item data determines whether it can be instilled."
           },
           "focus": {
             "type": "string",
-            "description": "What to optimize for (default: 'both'). 'dps' = pure DPS impact, 'defence' = pure EHP impact, 'both' = combined (DPS weight 1.0, EHP weight 0.5 — matches PoB's TradeQueryGenerator defaults).",
+            "description": "Objective: dps, defence, or both. Both returns alternatives without combining the objectives into a fixed score.",
             "enum": [
               "dps",
               "defence",
@@ -63,7 +120,9 @@
             ]
           },
           "max_results": {
-            "type": "number",
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 50,
             "description": "Maximum number of anoint candidates to return (default: 10)."
           }
         },
@@ -102,21 +161,49 @@
       "server": "pob",
       "group": "getBuildGoalsToolSchemas",
       "name": "check_boss_readiness",
-      "description": "Check if the loaded build meets the recommended thresholds for a specific endgame boss (Shaper, Elder, Sirus, Maven, Uber Elder, Eater of Worlds, Searing Exarch)",
+      "description": "Inspect current PoE2 defenses and selected-skill outputs for a native boss identity. Optionally compare explicit caller-defined stat benchmarks. Does not substitute PoE1 boss presets or infer encounter completion from arbitrary Life/DPS thresholds.",
       "schema": {
         "type": "object",
         "properties": {
           "boss": {
             "type": "string",
-            "description": "Boss name: 'shaper', 'elder', 'sirus', 'maven', 'uber_elder', 'eater', 'exarch', or 'pinnacle' for generic endgame"
+            "description": "Exact PoE2 boss name from native world-area data, or an alias such as arbiter, olroth, zarokh, xesht or trialmaster."
+          },
+          "build_name": {
+            "type": "string",
+            "description": "Optional saved build name; omission uses current unsaved native state."
+          },
+          "requirements": {
+            "type": "array",
+            "maxItems": 50,
+            "description": "Caller-defined benchmarks, not official boss requirements.",
+            "items": {
+              "type": "object",
+              "properties": {
+                "stat": {
+                  "type": "string"
+                },
+                "min": {
+                  "type": "number"
+                },
+                "max": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "stat"
+              ]
+            }
           }
         },
         "required": [
           "boss"
         ]
       },
-      "status": "not_audited",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "Actual native PoE2 defenses and WorldAreas boss identities; explicit caller benchmark and invalidPoE1 boss checked through MCP. Encounter-specific attack/uptime model remains unavailable, so aggregate defenses alone do not assert encounter readiness."
+      ]
     },
     {
       "server": "pob",
@@ -196,7 +283,7 @@
       "server": "pob",
       "group": "getConfigToolSchemas",
       "name": "get_config",
-      "description": "View current configuration state including charge usage, enemy settings, and active conditions. Requires Lua bridge with a loaded build.",
+      "description": "Read the selected native PoB2 config set, effective enemy level and raw inputs. Initialized flags do not establish applicability or uptime. Requires a live build.",
       "schema": {
         "type": "object",
         "properties": {}
@@ -512,7 +599,8 @@
             "description": "Build to list snapshots for"
           },
           "limit": {
-            "type": "number",
+            "type": "integer",
+            "minimum": 0,
             "description": "Maximum number of snapshots to return (optional)"
           },
           "tag_filter": {
@@ -535,7 +623,7 @@
       "server": "pob",
       "group": "getExportToolSchemas",
       "name": "restore_snapshot",
-      "description": "Restore a build from a snapshot. Optionally creates a backup of current state before restoring.",
+      "description": "Restore a saved build file from a validated snapshot or backup. Creates a current-file backup by default. Live PoB reload is separate and requires reload_live=true.",
       "schema": {
         "type": "object",
         "properties": {
@@ -545,7 +633,11 @@
           },
           "snapshot_id": {
             "type": "string",
-            "description": "Snapshot ID (timestamp) or tag to restore from"
+            "description": "Exact snapshot/backup ID or tag. A tag selects its newest snapshot; prefer an ID for an exact revision."
+          },
+          "reload_live": {
+            "type": "boolean",
+            "description": "Also load the restored file into live PoB. Default false; this replaces the currently loaded native build."
           },
           "backup_current": {
             "type": "boolean",
@@ -604,17 +696,17 @@
       "server": "pob",
       "group": "getLuaToolSchemas",
       "name": "lua_new_build",
-      "description": "Create a new blank build with specified class and ascendancy. In TCP mode this opens the new build in the running PoB GUI. Auto-starts the Lua bridge if needed. Classes and ascendancies (PoE1): Scion: Ascendant | Marauder: Juggernaut, Berserker, Chieftain | Ranger: Raider, Deadeye, Pathfinder | Witch: Occultist, Elementalist, Necromancer | Duelist: Slayer, Gladiator, Champion | Templar: Inquisitor, Hierophant, Guardian | Shadow: Assassin, Trickster, Saboteur",
+      "description": "Create a blank PoB2 build. Class and ascendancy names are validated against the installed native tree before opening; creation completes only after that class is selected and calculated. No PoE1 IDs or fallback class are used.",
       "schema": {
         "type": "object",
         "properties": {
           "class_name": {
             "type": "string",
-            "description": "Class name (e.g., 'Witch', 'Marauder')"
+            "description": "Exact class name from the installed PoB2 tree, e.g. Witch or Sorceress."
           },
           "ascendancy": {
             "type": "string",
-            "description": "Ascendancy class name (optional)"
+            "description": "Exact ascendancy belonging to that installed PoB2 class, e.g. Blood Mage for Witch. Omit or use None for unascended."
           }
         },
         "required": [
@@ -705,61 +797,21 @@
       "server": "pob",
       "group": "getLuaToolSchemas",
       "name": "lua_import_character",
-      "description": "Import a character from the official PoE API into the currently loaded build (replaces tree, items, and gems). Requires a build loaded via lua_load_build or lua_new_build. If account_name is omitted, falls back to POE_ACCOUNT_NAME. Set POE_SESSION_ID env var for private profiles.",
+      "description": "Load a complete public PoB2 character snapshot. Call get_character_pob separately and pass its pob_xml field. Its pob_code and source metadata remain with that public result. This preserves the complete build and all sets; selective account/API imports are not supported by this public PoE2 route.",
       "schema": {
         "type": "object",
         "properties": {
-          "account_name": {
+          "pob_xml": {
             "type": "string",
-            "description": "PoE account name including discriminator (e.g., 'account#1234'). Optional when POE_ACCOUNT_NAME is set."
+            "description": "The actual pob_xml string returned by get_character_pob, without the JSON envelope."
           },
           "character_name": {
             "type": "string",
-            "description": "Exact character name to import (case-sensitive)."
-          },
-          "realm": {
-            "type": "string",
-            "description": "Realm: 'pc', 'xbox', or 'sony' (default: 'pc').",
-            "enum": [
-              "pc",
-              "xbox",
-              "sony"
-            ],
-            "default": "pc"
-          },
-          "clear_jewels": {
-            "type": "boolean",
-            "description": "Clear existing jewels before importing the new tree (default: true).",
-            "default": true
-          },
-          "clear_items": {
-            "type": "boolean",
-            "description": "Clear existing equipped items before importing (default: true).",
-            "default": true
-          },
-          "clear_skills": {
-            "type": "boolean",
-            "description": "Clear existing skill gems before importing (default: true).",
-            "default": true
-          },
-          "ignore_weapon_swap": {
-            "type": "boolean",
-            "description": "Skip importing the weapon swap slots AND keep the build's existing 'use second weapon set' flag untouched. Use this when you have a custom swap configuration (e.g. leveling weapons in the swap) you want preserved. Default false: import the swap items and force the calc engine to use the primary slots so stats match the character's in-game active set.",
-            "default": false
-          },
-          "bandit": {
-            "type": "string",
-            "description": "Bandit choice to set after import. The PoE API does not expose this — ask the user which bandit they chose. Values: 'None' (Kill All, +1 passive point in current PoE1 — note the second point that was historically from Kill All is now from the 'Through Sacred Ground' quest), 'Alira' (+5 mana regen, +15% all res, +20% crit multi), 'Kraityn' (+6% atk/cast speed, +6% ailment avoidance, +6% move speed), 'Oak' (+2% life regen, +20 max life, +6% phys reduction).",
-            "enum": [
-              "None",
-              "Alira",
-              "Kraityn",
-              "Oak"
-            ]
+            "description": "Optional display name for this public snapshot; no account lookup is performed."
           }
         },
         "required": [
-          "character_name"
+          "pob_xml"
         ]
       },
       "status": "not_audited",
@@ -1053,13 +1105,13 @@
       "server": "pob",
       "group": "getLuaToolSchemas",
       "name": "compute_stat_weights",
-      "description": "Measure the loaded build's empirical DPS/EHP sensitivity to individual stat mods (life, attributes, attack/cast speed, crit, flat damage, resists) via non-mutating PoB sims — the user's build is never modified. Returns per-unit weights that replace hand-curated intuition: feed them to find_weighted_trade_items and record them in build-profile.md Sections 3-4. Run at gear/crafting pre-flight and after respecs. Requires the probe_stat_weights PoB API action (reinstall TCP API if missing).",
+      "description": "Measure finite differences in native PoB2 output for explicit probe modifiers. Results depend on the selected skill, weapon set, carrier item and probe magnitude; they are not universal weights or a proof of actual upgrade gains.",
       "schema": {
         "type": "object",
         "properties": {
           "slot": {
             "type": "string",
-            "description": "Carrier slot whose equipped item hosts the probe mods (default: first equipped of Ring 1/Ring 2/Amulet/Belt/Helmet/Boots/Gloves). Results are slot-independent for global mods."
+            "description": "Carrier slot whose equipped item hosts the probe mods (default: first equipped of Ring 1/Ring 2/Amulet/Belt/Helmet/Boots/Gloves). Carrier effects and local modifiers can change the measurement."
           },
           "mods": {
             "type": "array",
@@ -1233,7 +1285,7 @@
       "server": "pob",
       "group": "getLuaToolSchemas",
       "name": "lua_get_build_info",
-      "description": "Get metadata about the currently loaded build: name, character level, class, ascendancy, and tree version. Useful to confirm which build is active after lua_load_build or lua_new_build. Classes and ascendancies (PoE1): Scion: Ascendant | Marauder: Juggernaut, Berserker, Chieftain | Ranger: Raider, Deadeye, Pathfinder | Witch: Occultist, Elementalist, Necromancer | Duelist: Slayer, Gladiator, Champion | Templar: Inquisitor, Hierophant, Guardian | Shadow: Assassin, Trickster, Saboteur",
+      "description": "Get actual metadata from the loaded PoB2 build: name, character level, class, ascendancy and tree version. Pending native mode transitions return an error.",
       "schema": {
         "type": "object",
         "properties": {}
@@ -1333,10 +1385,12 @@
           },
           "slot_name": {
             "type": "string",
-            "description": "Equipment slot to equip: Weapon 1, Weapon 2, Helmet, Body Armour, Gloves, Boots, Amulet, Ring 1, Ring 2, Belt, Flask 1, Flask 2, Flask 3, Flask 4, Flask 5",
+            "description": "Equipment slot to equip: Weapon 1, Weapon 2, Weapon 1 Swap, Weapon 2 Swap, Helmet, Body Armour, Gloves, Boots, Amulet, Ring 1, Ring 2, Ring 3, Belt, Flask 1, Flask 2, Charm 1, Charm 2, Charm 3, Arm 1, Arm 2, Leg 1, Leg 2",
             "enum": [
               "Weapon 1",
               "Weapon 2",
+              "Weapon 1 Swap",
+              "Weapon 2 Swap",
               "Helmet",
               "Body Armour",
               "Gloves",
@@ -1344,12 +1398,17 @@
               "Amulet",
               "Ring 1",
               "Ring 2",
+              "Ring 3",
               "Belt",
               "Flask 1",
               "Flask 2",
-              "Flask 3",
-              "Flask 4",
-              "Flask 5"
+              "Charm 1",
+              "Charm 2",
+              "Charm 3",
+              "Arm 1",
+              "Arm 2",
+              "Leg 1",
+              "Leg 2"
             ]
           }
         },
@@ -1371,10 +1430,12 @@
         "properties": {
           "slot_name": {
             "type": "string",
-            "description": "Equipment slot to clear: Weapon 1, Weapon 2, Helmet, Body Armour, Gloves, Boots, Amulet, Ring 1, Ring 2, Belt, Flask 1, Flask 2, Flask 3, Flask 4, Flask 5",
+            "description": "Equipment slot to clear: Weapon 1, Weapon 2, Weapon 1 Swap, Weapon 2 Swap, Helmet, Body Armour, Gloves, Boots, Amulet, Ring 1, Ring 2, Ring 3, Belt, Flask 1, Flask 2, Charm 1, Charm 2, Charm 3, Arm 1, Arm 2, Leg 1, Leg 2",
             "enum": [
               "Weapon 1",
               "Weapon 2",
+              "Weapon 1 Swap",
+              "Weapon 2 Swap",
               "Helmet",
               "Body Armour",
               "Gloves",
@@ -1382,12 +1443,17 @@
               "Amulet",
               "Ring 1",
               "Ring 2",
+              "Ring 3",
               "Belt",
               "Flask 1",
               "Flask 2",
-              "Flask 3",
-              "Flask 4",
-              "Flask 5"
+              "Charm 1",
+              "Charm 2",
+              "Charm 3",
+              "Arm 1",
+              "Arm 2",
+              "Leg 1",
+              "Leg 2"
             ]
           }
         },
@@ -1428,15 +1494,26 @@
       "server": "pob",
       "group": "getLuaToolSchemas",
       "name": "toggle_flask",
-      "description": "Toggle a flask on/off",
+      "description": "Activate or deactivate a PoE2 flask or charm. Provide exactly one selector: flask_number 1 (life) or 2 (mana), or slotName for a Flask or Charm slot.",
       "schema": {
         "type": "object",
         "properties": {
           "flask_number": {
             "type": "integer",
             "minimum": 1,
-            "maximum": 5,
-            "description": "Flask slot number (1-5)"
+            "maximum": 2,
+            "description": "Flask slot number: 1 life, 2 mana. Omit when using slotName."
+          },
+          "slotName": {
+            "type": "string",
+            "enum": [
+              "Flask 1",
+              "Flask 2",
+              "Charm 1",
+              "Charm 2",
+              "Charm 3"
+            ],
+            "description": "Explicit PoB2 consumable slot. Omit flask_number when using slotName."
           },
           "active": {
             "type": "boolean",
@@ -1444,8 +1521,19 @@
           }
         },
         "required": [
-          "flask_number",
           "active"
+        ],
+        "oneOf": [
+          {
+            "required": [
+              "flask_number"
+            ]
+          },
+          {
+            "required": [
+              "slotName"
+            ]
+          }
         ]
       },
       "status": "partial",
@@ -1492,6 +1580,11 @@
             "type": "integer",
             "minimum": 1,
             "description": "Skill part index (1-based, optional)."
+          },
+          "stat_set": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "PoE2 stat-set index within the selected active skill (1-based). Updates MAIN and CALCS selections; independent of skill_part."
           }
         },
         "required": [
@@ -1507,7 +1600,7 @@
       "server": "pob",
       "group": "getLuaToolSchemas",
       "name": "create_socket_group",
-      "description": "Create a new socket group for skill gems",
+      "description": "Create a gem group in the active PoE2 skill set. To support an item-granted skill, create a separate support group in that equipment slot; generated groups are read-only.",
       "schema": {
         "type": "object",
         "properties": {
@@ -1521,6 +1614,8 @@
             "enum": [
               "Weapon 1",
               "Weapon 2",
+              "Weapon 1 Swap",
+              "Weapon 2 Swap",
               "Helmet",
               "Body Armour",
               "Gloves",
@@ -1528,12 +1623,8 @@
               "Amulet",
               "Ring 1",
               "Ring 2",
-              "Belt",
-              "Flask 1",
-              "Flask 2",
-              "Flask 3",
-              "Flask 4",
-              "Flask 5"
+              "Ring 3",
+              "Belt"
             ]
           },
           "enabled": {
@@ -1731,13 +1822,13 @@
       "server": "pob",
       "group": "getLuaToolSchemas",
       "name": "list_spectres",
-      "description": "List the spectres set on the build (the 'raised' set PoB simulates for Raise Spectre), and optionally search PoB's full spectre library by name. IMPORTANT: character imports NEVER set spectres — the PoE API doesn't report them — so a build with none set simulates generic spectres and misses any player/ally buffs (e.g. Perfect Guardian Turtle's Determination aura). Spectre benefits are also greppable in reference_data/text_lake/spectres.txt (grants: column).",
+      "description": "List the spectre selected per gem in the active PoE2 skill set, including group/gem indices and enabled state. Optionally search the installed spectre catalog.",
       "schema": {
         "type": "object",
         "properties": {
           "search": {
             "type": "string",
-            "description": "Optional case-insensitive substring to search the spectre library (e.g. 'turtle', 'perfect')"
+            "description": "Optional case-insensitive substring to search the installed PoE2 spectre catalog."
           }
         }
       },
@@ -1748,7 +1839,7 @@
       "server": "pob",
       "group": "getLuaToolSchemas",
       "name": "set_spectres",
-      "description": "Set which spectres are 'raised' on the build — the GUI-only spectre picker, now scriptable. Accepts display names (fuzzy: exact id → exact name → unique substring, e.g. 'perfect guardian turtle') or monster metadata ids. Replaces the whole list by default; mode 'add' appends. Triggers a recalc, so player-affecting spectre auras (Determination, Onslaught, etc.) show up in stats immediately. Spectres persist across imports — set once, re-set only when the in-game zoo changes.",
+      "description": "Select exactly one spectre per gem using group_index and gem_index from the active skill set. Pass one catalog name or metadata ID. Use separate gems/groups for different spectres. Updates that gem selection and the shared catalog, then recalculates.",
       "schema": {
         "type": "object",
         "properties": {
@@ -1757,19 +1848,32 @@
             "items": {
               "type": "string"
             },
-            "description": "Spectre names or metadata ids, e.g. ['Perfect Guardian Turtle', 'Perfect Forest Warrior']"
+            "minItems": 1,
+            "maxItems": 1,
+            "description": "Exactly one PoE2 spectre name or metadata ID for this gem."
           },
           "mode": {
             "type": "string",
             "enum": [
-              "replace",
-              "add"
+              "replace"
             ],
-            "description": "'replace' (default) sets exactly this list; 'add' appends to the existing list"
+            "description": "replace selects the spectre for this gem (default)."
+          },
+          "group_index": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "Group index in the active skill set (1-based)."
+          },
+          "gem_index": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "Spectre gem index within that group (1-based)."
           }
         },
         "required": [
-          "spectres"
+          "spectres",
+          "group_index",
+          "gem_index"
         ]
       },
       "status": "partial",
@@ -1836,6 +1940,8 @@
             "enum": [
               "Weapon 1",
               "Weapon 2",
+              "Weapon 1 Swap",
+              "Weapon 2 Swap",
               "Helmet",
               "Body Armour",
               "Gloves",
@@ -1843,12 +1949,8 @@
               "Amulet",
               "Ring 1",
               "Ring 2",
-              "Belt",
-              "Flask 1",
-              "Flask 2",
-              "Flask 3",
-              "Flask 4",
-              "Flask 5"
+              "Ring 3",
+              "Belt"
             ]
           }
         },
@@ -2178,9 +2280,7 @@
             "description": "Build to analyze"
           }
         },
-        "required": [
-          "build_name"
-        ]
+        "required": []
       },
       "status": "partial",
       "evidence": [
@@ -2191,10 +2291,63 @@
       "server": "pob",
       "group": "getOptimizationToolSchemas",
       "name": "suggest_optimal_nodes",
-      "description": "AI-powered suggestion of optimal passive nodes based on build goals",
+      "description": "Propose connected PoE2 passive paths using actual native output in both weapon sets, point budgets and attribute choices. Bounded proposals remain unapplied.",
       "schema": {
         "type": "object",
         "properties": {
+          "allocation_mode": {
+            "type": "string",
+            "enum": [
+              "shared",
+              "weapon1",
+              "weapon2"
+            ],
+            "description": "Where newly allocated passives belong; native results are measured in both weapon sets."
+          },
+          "candidate_node_ids": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          "remove_node_ids": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          "attribute_choices": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string",
+              "enum": [
+                "str",
+                "dex",
+                "int"
+              ]
+            }
+          },
+          "points_available": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 30,
+            "description": "Explicit point-spending ceiling; zero is preserved and no unknown quest points are invented."
+          },
+          "max_candidates": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 40
+          },
+          "max_distance": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 10
+          },
+          "preserve_keystones": {
+            "type": "boolean"
+          },
           "build_name": {
             "type": "string",
             "description": "Build to optimize"
@@ -2202,28 +2355,79 @@
           "goal": {
             "type": "string",
             "description": "Optimization goal: 'damage', 'defense', 'life', 'es', or stat name"
-          },
-          "points_available": {
-            "type": "number",
-            "description": "Number of passive points to spend (default: 10)"
           }
         },
         "required": [
-          "build_name",
           "goal"
         ]
       },
-      "status": "not_audited",
-      "evidence": []
+      "status": "partial_contract_verified",
+      "evidence": [
+        "API1.4 actual MCP: zero-point attribute change used4 native calls; invalid node rejected before candidate calculation. Both weapon sets, current tree version, and unchanged full state verified."
+      ]
     },
     {
       "server": "pob",
       "group": "getOptimizationToolSchemas",
       "name": "optimize_tree",
-      "description": "Full passive tree optimization - removes inefficient nodes and reallocates to better options",
+      "description": "Calculate cumulative PoE2 passive reallocations under explicit constraints and per-weapon budgets. Reports the bounded search and actual native measurements; does not apply the proposal.",
       "schema": {
         "type": "object",
         "properties": {
+          "allocation_mode": {
+            "type": "string",
+            "enum": [
+              "shared",
+              "weapon1",
+              "weapon2"
+            ],
+            "description": "Where newly allocated passives belong; native results are measured in both weapon sets."
+          },
+          "candidate_node_ids": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          "remove_node_ids": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          "attribute_choices": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string",
+              "enum": [
+                "str",
+                "dex",
+                "int"
+              ]
+            }
+          },
+          "points_available": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 30,
+            "description": "Explicit spending limit, including zero. Otherwise use known native/quest budget evidence."
+          },
+          "max_candidates": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 40
+          },
+          "max_distance": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 10
+          },
+          "preserve_keystones": {
+            "type": "boolean",
+            "description": "Whether to preserve allocated keystones (default: true)"
+          },
           "build_name": {
             "type": "string",
             "description": "Build to optimize"
@@ -2232,28 +2436,35 @@
             "type": "string",
             "description": "Primary optimization goal: 'damage', 'defense', 'balanced'"
           },
+          "max_points": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 30
+          },
+          "max_iterations": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 5
+          },
           "constraints": {
             "type": "object",
             "description": "Constraints like minimum life, required keystones, etc."
-          },
-          "preserve_keystones": {
-            "type": "boolean",
-            "description": "Whether to preserve allocated keystones (default: true)"
           }
         },
         "required": [
-          "build_name",
           "goal"
         ]
       },
-      "status": "not_audited",
-      "evidence": []
+      "status": "partial_contract_verified",
+      "evidence": [
+        "API1.4 actual MCP: bounded default search evaluated12 alternatives and4 refunds with34 native calls in54.58s; no improvement correctly returns no proposal. Both weapon sets and full XML/stats/config preserved. Unit/native tree tests cover legality, budgets, attributes and stopping limits."
+      ]
     },
     {
       "server": "pob",
       "group": "getOptimizationToolSchemas",
       "name": "analyze_items",
-      "description": "Analyze equipped items and suggest upgrades or improvements",
+      "description": "Read selected PoE2 items, exact modifiers and measured constraints from live state or a requested XML file. Missing stats stay unknown. Candidate upgrade rankings require native comparisons and current prices.",
       "schema": {
         "type": "object",
         "properties": {
@@ -2262,9 +2473,7 @@
             "description": "Build to analyze"
           }
         },
-        "required": [
-          "build_name"
-        ]
+        "required": []
       },
       "status": "partial",
       "evidence": [
@@ -2466,6 +2675,27 @@
             "minimum": 0,
             "maximum": 30,
             "description": "Bound market searches; zero returns the plan without listing searches."
+          },
+          "compare_items": {
+            "type": "boolean",
+            "description": "Compare complete equipment candidates with the live native build; default true when available."
+          },
+          "max_native_candidates": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 12
+          },
+          "native_metric": {
+            "type": "string",
+            "enum": [
+              "CombinedDPS",
+              "TotalDPS",
+              "FullDPS",
+              "TotalEHP",
+              "Life",
+              "EnergyShield"
+            ],
+            "description": "Order verified positive native gains per budget currency; selected items are also evaluated together."
           }
         }
       },
@@ -2500,26 +2730,61 @@
       "server": "pob",
       "group": "getPoeNinjaToolSchemas",
       "name": "find_arbitrage",
-      "description": "Inspect whether directional buy/sell quotes, quantities and costs are available to establish arbitrage. The current poe.ninja reference feed cannot prove executable opportunities; missing evidence is reported explicitly. Use the exact league.",
+      "description": "Find bounded 2–3-leg PoE2 currency cycles from actual directional bulk-trade quotations and advertised stock. Whole-unit sizing and leftovers are explicit. The percentage threshold is gross before unknown fees; overlapping candidates are alternatives and fills/net profit remain unverified. Requires trade access enabled.",
       "schema": {
         "type": "object",
         "properties": {
+          "reference_diagnostic": {
+            "type": "boolean",
+            "description": "Show quote/reference-rate deviations and shared listing dependencies without changing the quoted cycle calculation; default true."
+          },
+          "currencies": {
+            "type": "array",
+            "minItems": 2,
+            "maxItems": 3,
+            "items": {
+              "type": "string"
+            },
+            "description": "Distinct native IDs; default divine, exalted, chaos."
+          },
+          "start_currency": {
+            "type": "string",
+            "description": "One of currencies; default first entry."
+          },
+          "start_amount": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "Available whole units of the starting currency; default 1."
+          },
+          "max_steps": {
+            "type": "integer",
+            "enum": [
+              2,
+              3
+            ]
+          },
+          "max_quotes_per_pair": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 20
+          },
           "league": {
             "type": "string",
             "description": "Exact league as specified, e.g. Forbidden Rites or HC Forbidden Rites. Concurrent leagues remain separate."
           },
           "min_profit_percent": {
             "type": "number",
-            "description": "Minimum profit percentage to show (default: 1.0). Lower values find more opportunities but with smaller profits."
+            "description": "Minimum gross percentage on the deployed starting currency, before unknown costs; default 1.0."
           }
         },
         "required": [
           "league"
         ]
       },
-      "status": "partial",
+      "status": "partial_contract_verified",
       "evidence": [
-        "Aggregate valuations cannot prove executable arbitrage; the current tool reports missing directional quote/quantity/cost evidence. This is a functionality gap, not a restored arbitrage detector."
+        "Aggregate valuations cannot prove executable arbitrage; the current tool reports missing directional quote/quantity/cost evidence. This is a functionality gap, not a restored arbitrage detector.",
+        "PoE2 directional bulk-exchange offers and complete integer stock-limited2/3-leg routes, with inventory leftovers and unknown fee/net/fill state. Real anonymous offers and configured MCP call passed; tests cover shared quote dependencies and optional reference-price warnings. Observed quotes are not executed trades."
       ]
     },
     {
@@ -2990,7 +3255,7 @@
       "server": "pob",
       "group": "getToolSchemas",
       "name": "start_watching",
-      "description": "Start monitoring the builds directory for changes. Builds will be auto-reloaded when saved in PoB.",
+      "description": "Watch build-file changes, record events and invalidate the file-reading cache. Does not reload or replace the live PoB session.",
       "schema": {
         "type": "object",
         "properties": {}
@@ -3019,7 +3284,9 @@
         "type": "object",
         "properties": {
           "limit": {
-            "type": "number",
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 50,
             "description": "Maximum number of recent changes to return (default: 10)"
           }
         }
@@ -3358,7 +3625,7 @@
       "server": "pob",
       "group": "getToolSchemas",
       "name": "calculate_mod_odds",
-      "description": "Compute the probability of hitting target modifiers when rolling a base item, using the game's real spawn weights (from ModItem.lua). Answers 'what are my odds of T1 Life + T1 Fire Resistance on this base at ilvl 86?'. EXACT for the modeled cases: mods drawn weighted from the prefix/suffix pool, one mod per mod-group (sampling without replacement at group level), prefixes/suffixes independent given the slot counts.\n\nEach target is `{stat}` (keyword, e.g. 'maximum Life' — must resolve to a single mod group or you'll get a disambiguation list) OR `{group}` (exact PoB group key, e.g. 'IncreasedLife'), plus optional `min_tier` (worst acceptable tier rank; e.g. 2 = T1 or T2). `method`: 'chaos' (full rare reroll, default, 3/3 slots), 'alt' (magic item, 1 prefix + 1 suffix), or 'essence' (pass `essence_name` — the forced mod is guaranteed and pre-placed). Override slot assumptions with `prefix_count`/`suffix_count` (0–3).\n\nOutput: per-target weight share, P(prefix targets), P(suffix targets), tier-filter factor, combined probability, and estimated full rerolls (1/P). LIMITATIONS (deliberately not modeled — use Craft of Exile for these): fossil/harvest weight changes, meta-craft sequences, exact per-orb affix-count variance, and currency cost.",
+      "description": "Estimate one plain PoE2 exalt, augment or regal action using a validated Craft of Exile cache. Requires actual item rarity and the complete existing affix ID list. Native PoB 1/0 flags are eligibility, not probabilities. Targets use CoE family names or coe:<group-id>. Unsupported methods, effects, source patches and ambiguous mappings produce no numerical odds. Repeated attempts and currency cost are not modeled.",
       "schema": {
         "type": "object",
         "properties": {
@@ -3381,7 +3648,7 @@
                 },
                 "group": {
                   "type": "string",
-                  "description": "Exact PoB mod-group key."
+                  "description": "CoE family name, e.g. Strength, or coe:<group-id>."
                 },
                 "min_tier": {
                   "type": "number",
@@ -3394,11 +3661,11 @@
           "method": {
             "type": "string",
             "enum": [
-              "chaos",
-              "alt",
-              "essence"
+              "exalt",
+              "augment",
+              "regal"
             ],
-            "description": "PoE1 chaos, alteration or essence model."
+            "description": "Explicit one-step PoE2 operation; no default reroll is assumed."
           },
           "essence_name": {
             "type": "string",
@@ -3435,7 +3702,10 @@
         "required": [
           "base_name",
           "ilvl",
-          "targets"
+          "targets",
+          "method",
+          "item_rarity",
+          "existing_mod_ids"
         ]
       },
       "status": "partial",
@@ -3669,22 +3939,19 @@
       "server": "pob",
       "group": "getToolSchemas",
       "name": "get_atlas_node",
-      "description": "Look up a single Atlas of Worlds tree node by ID. Returns name, stats, type (Notable/Keystone/Jewel Socket/Mastery/Travel/Wormhole/Ascendancy), positional fields, and in/out connections. Data sourced from `reference_data/atlastree/data.json` (GGG's official atlas-export, mirrored in our community fork submodule). The data_patches.json overlay is applied if present. Unlike `get_tree_node` for the passive tree, there's no jewel-transformation layer — atlas doesn't have Timeless-Jewel-equivalent mechanics. Variants supported: `default`, `league` (current league), `ruthless`, `ruthless-league`.",
+      "description": "Read a PoE2 atlas node from the RePoE export, including source version, checksum, subtree and graph links. Only the default PoE2 graph is supported. Selector effects and player allocation are not supplied by this dataset.",
       "schema": {
         "type": "object",
         "properties": {
           "node_id": {
             "type": "string",
-            "description": "Atlas node ID (e.g., '1670' for Fortune's Favour)."
+            "description": "PoE2 atlas node ID from search_atlas_nodes."
           },
           "variant": {
             "type": "string",
             "description": "Atlas tree variant. Defaults to 'default' (standard atlas).",
             "enum": [
-              "default",
-              "league",
-              "ruthless",
-              "ruthless-league"
+              "default"
             ]
           },
           "raw_json": {
@@ -3705,7 +3972,7 @@
       "server": "pob",
       "group": "getToolSchemas",
       "name": "search_atlas_nodes",
-      "description": "Search the atlas tree for nodes matching a keyword (name or stat text). Optional node-type filter (`keystone`, `notable`, `jewel`, `mastery`, `wormhole`, `ascendancy`, `normal`). Useful for finding all atlas notables related to a mechanic (e.g., 'breach', 'expedition', 'heist'). Variant-aware (default/league/ruthless/ruthless-league).",
+      "description": "Search native PoE2 atlas node names and stat text, with source/version metadata. Display-only decorations are excluded. Only variant default is supported.",
       "schema": {
         "type": "object",
         "properties": {
@@ -3735,10 +4002,7 @@
             "type": "string",
             "description": "Atlas tree variant. Defaults to 'default'.",
             "enum": [
-              "default",
-              "league",
-              "ruthless",
-              "ruthless-league"
+              "default"
             ]
           }
         },
@@ -3755,7 +4019,7 @@
       "server": "pob",
       "group": "getToolSchemas",
       "name": "find_atlas_path_to_node",
-      "description": "Find the shortest path of passive nodes between two atlas tree nodes (BFS over the undirected in/out graph). The atlas tree's allocation state isn't visible to our tools via the public PoE API, so this tool requires an explicit `from_node_id` — there's no 'from build frontier' mode like in the passive-tree equivalent. Use it to measure distance between two notables, or to plan a route from your current allocation frontier (which you'd tell the tool manually) to a target notable.",
+      "description": "Find an undirected graph path between explicit PoE2 atlas node IDs. Excludes display-only nodes. Distance is graph edges, not verified allocation cost; quest gates and current allocation remain unknown.",
       "schema": {
         "type": "object",
         "properties": {
@@ -3771,10 +4035,7 @@
             "type": "string",
             "description": "Atlas tree variant. Defaults to 'default'.",
             "enum": [
-              "default",
-              "league",
-              "ruthless",
-              "ruthless-league"
+              "default"
             ]
           }
         },
@@ -3840,7 +4101,7 @@
       "server": "pob",
       "group": "getToolSchemas",
       "name": "get_node_power",
-      "description": "Return passive nodes ranked by PoB's built-in node power score (the same heat-map data shown by 'Show Node Power' on the tree). Each node gets an offence score (DPS contribution) and a defence score (life/armour/ES/evasion contribution). Requires the power to have been calculated — either enable 'Show Node Power' in PoB first, or pass recalculate=true (starts PoB's PowerBuilder; the API drives it in the background and partial data is available immediately). ⚠ Cost scales with the build's calc weight: on a build using the spectre MODELING GROUP (multiple Raise Spectre instances), a full recalculation is ~1300 nodes × several minion environments and can take MINUTES, degrading PoB's responsiveness meanwhile — consider temporarily disabling the modeling group (toggle_socket_group enabled=false) before tree-power work, then re-enabling. The API no longer pre-warms this on connect and never auto-restarts it on build changes (that starved the TCP bridge).",
+      "description": "Read the native node-power heat-map cache, or request its recalculation. Scores are an opaque native heuristic with unverified cache freshness; they are not legal allocation plans or measured DPS/EHP deltas. Modeling groups and the build remain unchanged.",
       "schema": {
         "type": "object",
         "properties": {
@@ -3863,11 +4124,15 @@
             "description": "Which nodes to include. Default: unallocated (most useful for 'what to take next')."
           },
           "max_depth": {
-            "type": "number",
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 100,
             "description": "Only return nodes within this many hops from the current allocated tree. Omit for no limit."
           },
           "limit": {
-            "type": "number",
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 100,
             "description": "Maximum number of results to return. Default: 20."
           },
           "recalculate": {
@@ -4288,7 +4553,7 @@
       "server": "pob",
       "group": "getTradeToolSchemas",
       "name": "compare_trade_items",
-      "description": "Compare returned listing IDs from a known search. PoE2 requires query_id, preserves quoted currencies and uses supplied-source reference conversions. Item properties/modifiers are not whole-build DPS/EHP gains.",
+      "description": "Compare returned listings with exact prices and currencies. Set evaluate_native and a slot for independent native PoB2 replacement calculations bound to the current build. Incomplete item conversion remains explicit; numerical outputs require verified state preservation.",
       "schema": {
         "type": "object",
         "properties": {
@@ -4308,6 +4573,18 @@
             "type": "string",
             "description": "Expected PoE2 league; fetched mismatches are rejected."
           },
+          "evaluate_native": {
+            "type": "boolean",
+            "description": "Calculate each item as a replacement in the loaded PoB2 build; default false."
+          },
+          "slot": {
+            "type": "string",
+            "description": "Exact slot, required when evaluate_native is true."
+          },
+          "build_name": {
+            "type": "string",
+            "description": "Optional name of the matching loaded build for native comparison."
+          },
           "build_context": {
             "type": "object",
             "description": "Optional item-contribution goals; not inferred build gains."
@@ -4321,7 +4598,8 @@
       },
       "status": "partial",
       "evidence": [
-        "Core MCP market round-trip verified in checkpoint3: actual league/units/listing/query identity and error behavior. Exotic variants and authenticated operations remain separate."
+        "Core MCP market round-trip verified in checkpoint3: actual league/units/listing/query identity and error behavior. Exotic variants and authenticated operations remain separate.",
+        "API1.4 native evaluation of two real fetched GGG ring listings passed. Detached same ring/body/Choir, synthetic Life upgrade, combined changes and Choir19-to20 tests preserve live state. Unmodeled modifiers (including Bonded Archon recovery) still reject numeric comparisons; missing item-skill ownership fails explicitly."
       ]
     },
     {
@@ -4731,9 +5009,12 @@
       "name": "get_price",
       "source": "poe-trade-mcp/poe_market.py",
       "line": 23,
-      "status": "partial",
+      "status": "partial_contract_verified",
       "evidence": [
-        "poe-trade-mcp/PORT_REPORT.md; real anonymous source probes plus32package tests, not every argument/capability."
+        "2026-09-16 bounded PoE2 nonfilter audit, Forbidden Rites: Exact Divine cache lookup equals live lookup; case-insensitive exact/variant cache logic covered offline.",
+        "Private, gitignored MCP evidence: .local/logs/trade-nonfilter-audit-20260916/baseline-mcp.json (labels: cached_get_price). Full request/status/provenance index: .local/logs/trade-nonfilter-audit-20260916/coverage-reconciliation.json (tool get_price).",
+        "Offline verification: poe-trade-mcp/tests/test_trade_economy_audit.py, tests/test_port.py and tests/test_transport.py: 50 passed. Broader poe-trade-mcp pytest tests: 131 passed, 0 failed/skipped, including synthetic filter/OAuth contracts with private temporary files; no real credentials or external auth calls. Summary: .local/logs/trade-nonfilter-audit-20260916/broader-pytest-summary.json.",
+        "Scope and remaining gaps: Cached categories only; no refresh hidden in reads."
       ],
       "description": "Get exact-name prices, preserving all variants, from the local PoE2 cache.",
       "schema": {
@@ -4761,8 +5042,13 @@
       "name": "get_price_history",
       "source": "poe-trade-mcp/poe_market.py",
       "line": 37,
-      "status": "not_audited",
-      "evidence": [],
+      "status": "partial_contract_verified",
+      "evidence": [
+        "2026-09-16 bounded PoE2 nonfilter audit, Forbidden Rites: Empty DB gives actionable error; second cold process preserves first observation; next retrieval adds the second.",
+        "Private, gitignored MCP evidence: .local/logs/trade-nonfilter-audit-20260916/baseline-mcp.json (labels: empty_get_price_history); .local/logs/trade-nonfilter-audit-20260916/verified-mcp.json (labels: cold_persistent_history, two_observations_history). Full request/status/provenance index: .local/logs/trade-nonfilter-audit-20260916/coverage-reconciliation.json (tool get_price_history).",
+        "Offline verification: poe-trade-mcp/tests/test_trade_economy_audit.py, tests/test_port.py and tests/test_transport.py: 50 passed. Broader poe-trade-mcp pytest tests: 131 passed, 0 failed/skipped, including synthetic filter/OAuth contracts with private temporary files; no real credentials or external auth calls. Summary: .local/logs/trade-nonfilter-audit-20260916/broader-pytest-summary.json.",
+        "Scope and remaining gaps: Local retrieval history only; no historical backfill or upstream timestamp."
+      ],
       "description": "Local observations for an exact name; includes category, currency, variant and fetch times.",
       "schema": {
         "type": "object",
@@ -4789,8 +5075,13 @@
       "name": "search_items",
       "source": "poe-trade-mcp/poe_market.py",
       "line": 51,
-      "status": "not_audited",
-      "evidence": [],
+      "status": "partial_contract_verified",
+      "evidence": [
+        "2026-09-16 bounded PoE2 nonfilter audit, Forbidden Rites: Literal Orb search returns exactly the requested 3 rows from latest category snapshots.",
+        "Private, gitignored MCP evidence: .local/logs/trade-nonfilter-audit-20260916/baseline-mcp.json (labels: cached_search). Full request/status/provenance index: .local/logs/trade-nonfilter-audit-20260916/coverage-reconciliation.json (tool search_items).",
+        "Offline verification: poe-trade-mcp/tests/test_trade_economy_audit.py, tests/test_port.py and tests/test_transport.py: 50 passed. Broader poe-trade-mcp pytest tests: 131 passed, 0 failed/skipped, including synthetic filter/OAuth contracts with private temporary files; no real credentials or external auth calls. Summary: .local/logs/trade-nonfilter-audit-20260916/broader-pytest-summary.json.",
+        "Scope and remaining gaps: Only categories explicitly fetched into this DB."
+      ],
       "description": "Search latest cached PoE2 category snapshots by literal name substring.",
       "schema": {
         "type": "object",
@@ -4822,8 +5113,13 @@
       "name": "get_risers",
       "source": "poe-trade-mcp/poe_market.py",
       "line": 69,
-      "status": "not_audited",
-      "evidence": [],
+      "status": "partial_contract_verified",
+      "evidence": [
+        "2026-09-16 bounded PoE2 nonfilter audit, Forbidden Rites: One observation gives []; two real Currency retrievals give 5 positive changes; arithmetic asserted.",
+        "Private, gitignored MCP evidence: .local/logs/trade-nonfilter-audit-20260916/baseline-mcp.json (labels: one_observation_get_risers); .local/logs/trade-nonfilter-audit-20260916/verified-mcp.json (labels: two_observations_get_risers). Full request/status/provenance index: .local/logs/trade-nonfilter-audit-20260916/coverage-reconciliation.json (tool get_risers).",
+        "Offline verification: poe-trade-mcp/tests/test_trade_economy_audit.py, tests/test_port.py and tests/test_transport.py: 50 passed. Broader poe-trade-mcp pytest tests: 131 passed, 0 failed/skipped, including synthetic filter/OAuth contracts with private temporary files; no real credentials or external auth calls. Summary: .local/logs/trade-nonfilter-audit-20260916/broader-pytest-summary.json.",
+        "Scope and remaining gaps: Changes between observations, not a time-normalized trend or fill evidence."
+      ],
       "description": "Positive changes across real observations of the same league/item/variant/currency.",
       "schema": {
         "type": "object",
@@ -4858,8 +5154,13 @@
       "name": "get_fallers",
       "source": "poe-trade-mcp/poe_market.py",
       "line": 90,
-      "status": "not_audited",
-      "evidence": [],
+      "status": "partial_contract_verified",
+      "evidence": [
+        "2026-09-16 bounded PoE2 nonfilter audit, Forbidden Rites: Two real retrievals give 5 negative changes; signs and arithmetic asserted.",
+        "Private, gitignored MCP evidence: .local/logs/trade-nonfilter-audit-20260916/baseline-mcp.json (labels: one_observation_get_fallers); .local/logs/trade-nonfilter-audit-20260916/verified-mcp.json (labels: two_observations_get_fallers). Full request/status/provenance index: .local/logs/trade-nonfilter-audit-20260916/coverage-reconciliation.json (tool get_fallers).",
+        "Offline verification: poe-trade-mcp/tests/test_trade_economy_audit.py, tests/test_port.py and tests/test_transport.py: 50 passed. Broader poe-trade-mcp pytest tests: 131 passed, 0 failed/skipped, including synthetic filter/OAuth contracts with private temporary files; no real credentials or external auth calls. Summary: .local/logs/trade-nonfilter-audit-20260916/broader-pytest-summary.json.",
+        "Scope and remaining gaps: Same observation-age limitation; min_price uses each row reference currency."
+      ],
       "description": "Negative changes across real observations of the same league/item/variant/currency.",
       "schema": {
         "type": "object",
@@ -4894,8 +5195,13 @@
       "name": "get_movers",
       "source": "poe-trade-mcp/poe_market.py",
       "line": 107,
-      "status": "not_audited",
-      "evidence": [],
+      "status": "partial_contract_verified",
+      "evidence": [
+        "2026-09-16 bounded PoE2 nonfilter audit, Forbidden Rites: Two real retrievals give 5 largest absolute changes, including both signs; ordering asserted.",
+        "Private, gitignored MCP evidence: .local/logs/trade-nonfilter-audit-20260916/baseline-mcp.json (labels: one_observation_get_movers); .local/logs/trade-nonfilter-audit-20260916/verified-mcp.json (labels: two_observations_get_movers). Full request/status/provenance index: .local/logs/trade-nonfilter-audit-20260916/coverage-reconciliation.json (tool get_movers).",
+        "Offline verification: poe-trade-mcp/tests/test_trade_economy_audit.py, tests/test_port.py and tests/test_transport.py: 50 passed. Broader poe-trade-mcp pytest tests: 131 passed, 0 failed/skipped, including synthetic filter/OAuth contracts with private temporary files; no real credentials or external auth calls. Summary: .local/logs/trade-nonfilter-audit-20260916/broader-pytest-summary.json.",
+        "Scope and remaining gaps: Zero movements allowed by current contract; no mixed-unit aggregation."
+      ],
       "description": "Largest absolute percentage changes; mixed currencies are never summed.",
       "schema": {
         "type": "object",
@@ -4930,8 +5236,13 @@
       "name": "snapshot_status",
       "source": "poe-trade-mcp/poe_market.py",
       "line": 124,
-      "status": "not_audited",
-      "evidence": [],
+      "status": "partial_contract_verified",
+      "evidence": [
+        "2026-09-16 bounded PoE2 nonfilter audit, Forbidden Rites: 0 initially; 2 category snapshots after refresh; 2 survive restart; 4 after next retrievals; another league remains 0.",
+        "Private, gitignored MCP evidence: .local/logs/trade-nonfilter-audit-20260916/baseline-mcp.json (labels: empty_snapshot_status, populated_status, isolated_league); .local/logs/trade-nonfilter-audit-20260916/verified-mcp.json (labels: cold_persistent_status, final_status). Full request/status/provenance index: .local/logs/trade-nonfilter-audit-20260916/coverage-reconciliation.json (tool snapshot_status).",
+        "Offline verification: poe-trade-mcp/tests/test_trade_economy_audit.py, tests/test_port.py and tests/test_transport.py: 50 passed. Broader poe-trade-mcp pytest tests: 131 passed, 0 failed/skipped, including synthetic filter/OAuth contracts with private temporary files; no real credentials or external auth calls. Summary: .local/logs/trade-nonfilter-audit-20260916/broader-pytest-summary.json.",
+        "Scope and remaining gaps: Status describes this isolated local DB, not global market coverage."
+      ],
       "description": "Show cache coverage and observation times for the exact PoE2 league.",
       "schema": {
         "type": "object",
@@ -4952,9 +5263,12 @@
       "name": "ninja_lookup",
       "source": "poe-trade-mcp/poe_pricer.py",
       "line": 232,
-      "status": "partial",
+      "status": "partial_contract_verified",
       "evidence": [
-        "poe-trade-mcp/PORT_REPORT.md; real anonymous source probes plus32package tests, not every argument/capability."
+        "2026-09-16 bounded PoE2 nonfilter audit, Forbidden Rites: Divine exact=1, Exalted substring=3, Choir=1; each overview own primary/rates used.",
+        "Private, gitignored MCP evidence: .local/logs/trade-nonfilter-audit-20260916/baseline-mcp.json (labels: lookup_Divine Orb, lookup_Exalted Orb, lookup_Choir of the Storm). Full request/status/provenance index: .local/logs/trade-nonfilter-audit-20260916/coverage-reconciliation.json (tool ninja_lookup).",
+        "Offline verification: poe-trade-mcp/tests/test_trade_economy_audit.py, tests/test_port.py and tests/test_transport.py: 50 passed. Broader poe-trade-mcp pytest tests: 131 passed, 0 failed/skipped, including synthetic filter/OAuth contracts with private temporary files; no real credentials or external auth calls. Summary: .local/logs/trade-nonfilter-audit-20260916/broader-pytest-summary.json.",
+        "Scope and remaining gaps: Reference valuations; missing exact rolls/variants never fabricated. Other categories not live sampled."
       ],
       "description": "Public PoE2 prices with reference currency, conversions, variants, source and fetch time; cached hourly.",
       "schema": {
@@ -5014,9 +5328,12 @@
       "name": "price_item",
       "source": "poe-trade-mcp/poe_pricer.py",
       "line": 248,
-      "status": "partial",
+      "status": "partial_contract_verified",
       "evidence": [
-        "poe-trade-mcp/PORT_REPORT.md; real anonymous source probes plus32package tests, not every argument/capability."
+        "2026-09-16 bounded PoE2 nonfilter audit, Forbidden Rites: Currency dict/clipboard and uncorrupted unique work; corrupted clipboard now correctly remains unpriced when source only offers uncorrupted reference.",
+        "Private, gitignored MCP evidence: .local/logs/trade-nonfilter-audit-20260916/baseline-mcp.json (labels: price_dict, price_clipboard, price_choir_dict, price_choir_clipboard); .local/logs/trade-nonfilter-audit-20260916/verified-mcp.json (labels: unique_clipboard_fixed, unique_clipboard_uncorrupted). Full request/status/provenance index: .local/logs/trade-nonfilter-audit-20260916/coverage-reconciliation.json (tool price_item).",
+        "Offline verification: poe-trade-mcp/tests/test_trade_economy_audit.py, tests/test_port.py and tests/test_transport.py: 50 passed. Broader poe-trade-mcp pytest tests: 131 passed, 0 failed/skipped, including synthetic filter/OAuth contracts with private temporary files; no real credentials or external auth calls. Summary: .local/logs/trade-nonfilter-audit-20260916/broader-pytest-summary.json.",
+        "Scope and remaining gaps: Named overview estimates only; calibrated rare/exact-roll valuation absent."
       ],
       "description": "Estimate a named PoE2 item from public category/variant prices. Rare valuation is unsupported.",
       "schema": {
@@ -5088,8 +5405,13 @@
       "name": "price_items",
       "source": "poe-trade-mcp/poe_pricer.py",
       "line": 266,
-      "status": "not_audited",
-      "evidence": [],
+      "status": "partial_contract_verified",
+      "evidence": [
+        "2026-09-16 bounded PoE2 nonfilter audit, Forbidden Rites: Batch of 4: 2 priced, 2 unpriced; one-unit chaos total matches known entries. Visibility/min_price logic tested offline.",
+        "Private, gitignored MCP evidence: .local/logs/trade-nonfilter-audit-20260916/baseline-mcp.json (labels: price_batch). Full request/status/provenance index: .local/logs/trade-nonfilter-audit-20260916/coverage-reconciliation.json (tool price_items).",
+        "Offline verification: poe-trade-mcp/tests/test_trade_economy_audit.py, tests/test_port.py and tests/test_transport.py: 50 passed. Broader poe-trade-mcp pytest tests: 131 passed, 0 failed/skipped, including synthetic filter/OAuth contracts with private temporary files; no real credentials or external auth calls. Summary: .local/logs/trade-nonfilter-audit-20260916/broader-pytest-summary.json.",
+        "Scope and remaining gaps: Explicit one-unit-per-item semantics; stack sizes not multiplied; rare remains unpriced."
+      ],
       "description": "Price up to 100 supplied items using public PoE2 overviews. Totals report unpriced counts.",
       "schema": {
         "type": "object",
@@ -5263,7 +5585,10 @@
       "line": 123,
       "status": "partial",
       "evidence": [
-        "poe-trade-mcp/tests and PORT_REPORT.md; clipboard analysis/capability reporting work, numeric rare valuation and token validation remain unimplemented."
+        "2026-09-16 bounded PoE2 nonfilter audit, Forbidden Rites: Synthetic supplied PoE2 sceptre: 3 comparison candidates plus 1 preserved unknown mod; price=null, no numeric score.",
+        "Private, gitignored MCP evidence: .local/logs/trade-nonfilter-audit-20260916/baseline-mcp.json (labels: rare_analysis). Full request/status/provenance index: .local/logs/trade-nonfilter-audit-20260916/coverage-reconciliation.json (tool score_rare).",
+        "Offline verification: poe-trade-mcp/tests/test_trade_economy_audit.py, tests/test_port.py and tests/test_transport.py: 50 passed. Broader poe-trade-mcp pytest tests: 131 passed, 0 failed/skipped, including synthetic filter/OAuth contracts with private temporary files; no real credentials or external auth calls. Summary: .local/logs/trade-nonfilter-audit-20260916/broader-pytest-summary.json.",
+        "Scope and remaining gaps: REAL GAP: affix-tier/build-sensitive score and market valuation not implemented."
       ],
       "description": "Analyze supplied PoE2 Rare/Magic clipboard mods locally and suggest comparison criteria; no calibrated price or network request.",
       "schema": {
@@ -5366,11 +5691,14 @@
       "name": "search_trade",
       "source": "poe-trade-mcp/poe_trade.py",
       "line": 155,
-      "status": "partial",
+      "status": "partial_contract_verified",
       "evidence": [
-        "poe-trade-mcp/PORT_REPORT.md; real anonymous source probes plus32package tests, not every argument/capability."
+        "2026-09-16 bounded PoE2 nonfilter audit, Forbidden Rites: Choir source total 621 and 100 returned IDs now retained; max=3 divine-denominated filter preserved.",
+        "Private, gitignored MCP evidence: .local/logs/trade-nonfilter-audit-20260916/baseline-mcp.json (labels: baseline_search, invalid_links, invalid_bounds); .local/logs/trade-nonfilter-audit-20260916/verified-mcp.json (labels: unique_search, unique_search_fetch). Full request/status/provenance index: .local/logs/trade-nonfilter-audit-20260916/coverage-reconciliation.json (tool search_trade).",
+        "Offline verification: poe-trade-mcp/tests/test_trade_economy_audit.py, tests/test_port.py and tests/test_transport.py: 50 passed. Broader poe-trade-mcp pytest tests: 131 passed, 0 failed/skipped, including synthetic filter/OAuth contracts with private temporary files; no real credentials or external auth calls. Summary: .local/logs/trade-nonfilter-audit-20260916/broader-pytest-summary.json.",
+        "Scope and remaining gaps: Source result subset retained, not all total matches; anonymous normal search only, no weighted/auth claim."
       ],
-      "description": "Anonymous PoE2 read-only trade search; returns a URL and count. Public API access may be denied.",
+      "description": "Anonymous PoE2 read-only trade search; returns a URL, total count and source listing_ids for fetch_listing (batches up to 10). Returned IDs may be fewer than total matches. Public API access may be denied.",
       "schema": {
         "type": "object",
         "properties": {
@@ -5466,8 +5794,13 @@
       "name": "get_stat_ids",
       "source": "poe-trade-mcp/poe_trade.py",
       "line": 250,
-      "status": "not_audited",
-      "evidence": [],
+      "status": "partial_contract_verified",
+      "evidence": [
+        "2026-09-16 bounded PoE2 nonfilter audit, Forbidden Rites: Live to Spirit returns 19 matches; exact movement-speed ID returns one; limit=101 rejected.",
+        "Private, gitignored MCP evidence: .local/logs/trade-nonfilter-audit-20260916/baseline-mcp.json (labels: stat_spirit, invalid_stat_limit); .local/logs/trade-nonfilter-audit-20260916/verified-mcp.json (labels: stat_exact_id). Full request/status/provenance index: .local/logs/trade-nonfilter-audit-20260916/coverage-reconciliation.json (tool get_stat_ids).",
+        "Offline verification: poe-trade-mcp/tests/test_trade_economy_audit.py, tests/test_port.py and tests/test_transport.py: 50 passed. Broader poe-trade-mcp pytest tests: 131 passed, 0 failed/skipped, including synthetic filter/OAuth contracts with private temporary files; no real credentials or external auth calls. Summary: .local/logs/trade-nonfilter-audit-20260916/broader-pytest-summary.json.",
+        "Scope and remaining gaps: Duplicate text IDs preserved; selecting one is caller responsibility."
+      ],
       "description": "Find current PoE2 stat ids; cached metadata, no league guessing.",
       "schema": {
         "type": "object",
@@ -5494,8 +5827,13 @@
       "name": "search_by_item_mods",
       "source": "poe-trade-mcp/poe_trade.py",
       "line": 272,
-      "status": "not_audited",
-      "evidence": [],
+      "status": "partial",
+      "evidence": [
+        "2026-09-16 bounded PoE2 nonfilter audit, Forbidden Rites: 20% Movement Speed at min_pct=.75 becomes min=15 on rare boots; returned IDs fetch listings with 25% and 15%. Ambiguous Spirit rejected.",
+        "Private, gitignored MCP evidence: .local/logs/trade-nonfilter-audit-20260916/verified-mcp.json (labels: mod_search, mod_search_fetch, ambiguous_spirit); .local/logs/trade-nonfilter-audit-20260916/baseline-mcp.json (labels: invalid_mod_range). Full request/status/provenance index: .local/logs/trade-nonfilter-audit-20260916/coverage-reconciliation.json (tool search_by_item_mods).",
+        "Offline verification: poe-trade-mcp/tests/test_trade_economy_audit.py, tests/test_port.py and tests/test_transport.py: 50 passed. Broader poe-trade-mcp pytest tests: 131 passed, 0 failed/skipped, including synthetic filter/OAuth contracts with private temporary files; no real credentials or external auth calls. Summary: .local/logs/trade-nonfilter-audit-20260916/broader-pytest-summary.json.",
+        "Scope and remaining gaps: is_local=true works for 8 source-labelled local templates; unlabelled stats such as increased Physical Damage cannot be mapped with that flag. Use explicit verified IDs. Multi-number/negative/ambiguous text requires explicit stat filters. Unique-name alias tested offline."
+      ],
       "description": "Map unambiguous single-number mod texts to PoE2 stat ids. Unmatched mods are errors.",
       "schema": {
         "type": "object",
@@ -5594,8 +5932,13 @@
       "name": "fetch_listing",
       "source": "poe-trade-mcp/poe_trade.py",
       "line": 312,
-      "status": "not_audited",
-      "evidence": [],
+      "status": "partial_contract_verified",
+      "evidence": [
+        "2026-09-16 bounded PoE2 nonfilter audit, Forbidden Rites: Both unique and mod searches feed returned IDs and matching query ID into real fetch; 4 listings retain actual price currencies and structured mods.",
+        "Private, gitignored MCP evidence: .local/logs/trade-nonfilter-audit-20260916/verified-mcp.json (labels: unique_search_fetch, mod_search_fetch); .local/logs/trade-nonfilter-audit-20260916/baseline-mcp.json (labels: invalid_listing_batch, invalid_listing_query). Full request/status/provenance index: .local/logs/trade-nonfilter-audit-20260916/coverage-reconciliation.json (tool fetch_listing).",
+        "Offline verification: poe-trade-mcp/tests/test_trade_economy_audit.py, tests/test_port.py and tests/test_transport.py: 50 passed. Broader poe-trade-mcp pytest tests: 131 passed, 0 failed/skipped, including synthetic filter/OAuth contracts with private temporary files; no real credentials or external auth calls. Summary: .local/logs/trade-nonfilter-audit-20260916/broader-pytest-summary.json.",
+        "Scope and remaining gaps: Read up to 10 supplied IDs; no source retrieval timestamp in tool output; expired/null listings covered offline. Current offers not guaranteed fills."
+      ],
       "description": "Read up to 10 explicitly supplied PoE2 listing IDs. No seller contact or purchase.",
       "schema": {
         "type": "object",
@@ -5628,212 +5971,259 @@
       "server": "trade",
       "name": "get_filter_info",
       "source": "poe-trade-mcp/poe_filter.py",
-      "line": 116,
-      "status": "not_audited",
-      "evidence": [],
-      "description": "Get summary info about the filter: path, total lines, block count, and all section headers (## comments). Use this to orient yourself before making changes.",
+      "line": 231,
+      "status": "partial_contract_verified",
+      "evidence": [
+        "2026-09-16 MSK actual-filter read-only audit: Actual working copy: 7412 lines, 520 blocks (375 Show,145 Hide), 38 Continue actions. Read only; SHA-256 unchanged.",
+        "Private MCP evidence: /tmp/poe2-filter-compat-ipg1bz7b/after-fix.json (calls.info); all 13 tools discovered, seven read-only tools exercised on the working copy. Before/after filter SHA-256: 074f603d0b4476e9a433e3a06d45ce988c604b27780cc680360df7a1ab772b17.",
+        "Scope: mutation tools were not run on the working copy. Validation/catalog/preview are bounded source models; accepted compatibility syntax and unresolved names remain warnings. No publication or game loading.",
+        "Existing offline verification: 71 dedicated PoE2 filter tests passed in poe-trade-mcp/tests/test_poe2_filters.py; synthetic/native-shaped fixtures and private temporary artifacts. No tests or new MCP calls were run for this coverage update."
+      ],
+      "description": "Read local filter structure and section headers. Continue is an action, not a block.",
       "schema": {
         "type": "object",
         "properties": {
           "filter_path": {
             "type": "string",
-            "description": "Path to .filter file. Default: /home/daleksandrov/Documents/My Games/Path of Exile 2/Starting.filter"
+            "description": "Absolute local .filter path; POE_FILTER_PATH may configure the default"
           }
-        }
+        },
+        "required": [],
+        "additionalProperties": false
       },
-      "discovery": "verified via MCP1.30.0 stdio"
+      "discovery": "13 filter tools verified by cold MCP; saved 46-tool aggregate schemas: .local/logs/trade-nonfilter-audit-20260916/verified-discovery.json"
     },
     {
       "server": "trade",
       "name": "find_blocks",
       "source": "poe-trade-mcp/poe_filter.py",
-      "line": 133,
-      "status": "not_audited",
-      "evidence": [],
-      "description": "Search filter blocks matching a query. Returns matching blocks with line numbers, type (Show/Hide/Continue), comment, and key conditions. Query is matched against the full block text (case-insensitive).",
+      "line": 232,
+      "status": "partial_contract_verified",
+      "evidence": [
+        "2026-09-16 MSK actual-filter read-only audit: Located the actual Divine Orb rule at line 5460 with a bounded block preview.",
+        "Private MCP evidence: /tmp/poe2-filter-compat-ipg1bz7b/after-fix.json (calls.find); all 13 tools discovered, seven read-only tools exercised on the working copy. Before/after filter SHA-256: 074f603d0b4476e9a433e3a06d45ce988c604b27780cc680360df7a1ab772b17.",
+        "Scope: mutation tools were not run on the working copy. Validation/catalog/preview are bounded source models; accepted compatibility syntax and unresolved names remain warnings. No publication or game loading.",
+        "Existing offline verification: 71 dedicated PoE2 filter tests passed in poe-trade-mcp/tests/test_poe2_filters.py; synthetic/native-shaped fixtures and private temporary artifacts. No tests or new MCP calls were run for this coverage update."
+      ],
+      "description": "Find local filter blocks by text; returns 1-based line numbers and a bounded preview.",
       "schema": {
         "type": "object",
         "properties": {
-          "query": {
-            "type": "string",
-            "description": "Text to search for (e.g. 'Orb of Chance', 'Body Armours', 'Bosch')."
-          },
           "filter_path": {
+            "type": "string",
+            "description": "Absolute local .filter path; POE_FILTER_PATH may configure the default"
+          },
+          "query": {
             "type": "string"
           },
           "limit": {
             "type": "integer",
-            "description": "Max results to return (default 20)."
+            "minimum": 1,
+            "maximum": 200
           }
         },
         "required": [
           "query"
-        ]
+        ],
+        "additionalProperties": false
       },
-      "discovery": "verified via MCP1.30.0 stdio"
+      "discovery": "13 filter tools verified by cold MCP; saved 46-tool aggregate schemas: .local/logs/trade-nonfilter-audit-20260916/verified-discovery.json"
     },
     {
       "server": "trade",
       "name": "get_block",
       "source": "poe-trade-mcp/poe_filter.py",
-      "line": 156,
-      "status": "not_audited",
-      "evidence": [],
-      "description": "Get the full text of a block by its starting line number.",
+      "line": 233,
+      "status": "partial_contract_verified",
+      "evidence": [
+        "2026-09-16 MSK actual-filter read-only audit: Read the actual Divine Orb block at lines 5460-5469 with its actions and conditions.",
+        "Private MCP evidence: /tmp/poe2-filter-compat-ipg1bz7b/after-fix.json (calls.block); all 13 tools discovered, seven read-only tools exercised on the working copy. Before/after filter SHA-256: 074f603d0b4476e9a433e3a06d45ce988c604b27780cc680360df7a1ab772b17.",
+        "Scope: mutation tools were not run on the working copy. Validation/catalog/preview are bounded source models; accepted compatibility syntax and unresolved names remain warnings. No publication or game loading.",
+        "Existing offline verification: 71 dedicated PoE2 filter tests passed in poe-trade-mcp/tests/test_poe2_filters.py; synthetic/native-shaped fixtures and private temporary artifacts. No tests or new MCP calls were run for this coverage update."
+      ],
+      "description": "Read a block at its 1-based starting line.",
       "schema": {
         "type": "object",
         "properties": {
+          "filter_path": {
+            "type": "string",
+            "description": "Absolute local .filter path; POE_FILTER_PATH may configure the default"
+          },
           "line": {
             "type": "integer",
-            "description": "Starting line number of the block (1-based)."
-          },
-          "filter_path": {
-            "type": "string"
+            "minimum": 1
           }
         },
         "required": [
           "line"
-        ]
+        ],
+        "additionalProperties": false
       },
-      "discovery": "verified via MCP1.30.0 stdio"
+      "discovery": "13 filter tools verified by cold MCP; saved 46-tool aggregate schemas: .local/logs/trade-nonfilter-audit-20260916/verified-discovery.json"
     },
     {
       "server": "trade",
       "name": "add_block",
       "source": "poe-trade-mcp/poe_filter.py",
-      "line": 171,
-      "status": "not_audited",
-      "evidence": [],
-      "description": "Insert a new filter block. Positions:\n  'top' — after the [[0100]] override header (highest priority)\n  'bottom' — at the end of the file\n  'after_line:N' — after line number N\n  'after_pattern:TEXT' — after the first line containing TEXT",
+      "line": 234,
+      "status": "partial_contract_verified",
+      "evidence": [
+        "2026-09-15/16 bounded filter audit: Private temporary-file tests verify insertion before rules/imports and insertion after a matching complete block.",
+        "Scope and remaining gaps: No edit was attempted on the user working copy or original game cache; arbitrary filters and client compilation remain unverified.",
+        "Existing offline verification: 71 dedicated PoE2 filter tests passed in poe-trade-mcp/tests/test_poe2_filters.py; synthetic/native-shaped fixtures and private temporary artifacts. No tests or new MCP calls were run for this coverage update."
+      ],
+      "description": "Insert one validated PoE2 block. top precedes all rules/imports; after_pattern appends after its matching block.",
       "schema": {
         "type": "object",
         "properties": {
-          "block_text": {
+          "filter_path": {
             "type": "string",
-            "description": "Full block text to insert, e.g. 'Hide\\n\\tBaseType == \"Orb of Chance\"'"
+            "description": "Absolute local .filter path; POE_FILTER_PATH may configure the default"
+          },
+          "block_text": {
+            "type": "string"
           },
           "position": {
-            "type": "string",
-            "description": "Where to insert. Default: 'top'"
-          },
-          "filter_path": {
             "type": "string"
           }
         },
         "required": [
           "block_text"
-        ]
+        ],
+        "additionalProperties": false
       },
-      "discovery": "verified via MCP1.30.0 stdio"
+      "discovery": "13 filter tools verified by cold MCP; saved 46-tool aggregate schemas: .local/logs/trade-nonfilter-audit-20260916/verified-discovery.json"
     },
     {
       "server": "trade",
       "name": "remove_block",
       "source": "poe-trade-mcp/poe_filter.py",
-      "line": 196,
-      "status": "not_audited",
-      "evidence": [],
-      "description": "Remove a block by its starting line number. Use find_blocks first to locate the line number.",
+      "line": 235,
+      "status": "partial_contract_verified",
+      "evidence": [
+        "2026-09-15/16 bounded filter audit: Private temporary-file contracts exercise block removal and preserve adjoining section comments.",
+        "Scope and remaining gaps: User working copy/original cache were read only; arbitrary filter layouts and client compilation remain unverified.",
+        "Existing offline verification: 71 dedicated PoE2 filter tests passed in poe-trade-mcp/tests/test_poe2_filters.py; synthetic/native-shaped fixtures and private temporary artifacts. No tests or new MCP calls were run for this coverage update."
+      ],
+      "description": "Remove one block, preserving adjoining section comments.",
       "schema": {
         "type": "object",
         "properties": {
+          "filter_path": {
+            "type": "string",
+            "description": "Absolute local .filter path; POE_FILTER_PATH may configure the default"
+          },
           "line": {
             "type": "integer",
-            "description": "Starting line number of the block to remove (1-based)."
-          },
-          "filter_path": {
-            "type": "string"
+            "minimum": 1
           }
         },
         "required": [
           "line"
-        ]
+        ],
+        "additionalProperties": false
       },
-      "discovery": "verified via MCP1.30.0 stdio"
+      "discovery": "13 filter tools verified by cold MCP; saved 46-tool aggregate schemas: .local/logs/trade-nonfilter-audit-20260916/verified-discovery.json"
     },
     {
       "server": "trade",
       "name": "replace_block",
       "source": "poe-trade-mcp/poe_filter.py",
-      "line": 214,
-      "status": "not_audited",
-      "evidence": [],
-      "description": "Replace a block entirely with new text. Use find_blocks first to locate the line number.",
+      "line": 236,
+      "status": "partial_contract_verified",
+      "evidence": [
+        "2026-09-15/16 bounded filter audit: Private temporary-file contracts verify replacement, Continue behavior, adjacent comments and newline/BOM preservation.",
+        "Scope and remaining gaps: User working copy/original cache were read only; this does not establish every game syntax extension.",
+        "Existing offline verification: 71 dedicated PoE2 filter tests passed in poe-trade-mcp/tests/test_poe2_filters.py; synthetic/native-shaped fixtures and private temporary artifacts. No tests or new MCP calls were run for this coverage update."
+      ],
+      "description": "Replace one block; preserves UTF-8 BOM and newline convention.",
       "schema": {
         "type": "object",
         "properties": {
+          "filter_path": {
+            "type": "string",
+            "description": "Absolute local .filter path; POE_FILTER_PATH may configure the default"
+          },
           "line": {
             "type": "integer",
-            "description": "Starting line number of the block to replace (1-based)."
+            "minimum": 1
           },
           "new_block_text": {
-            "type": "string",
-            "description": "Replacement block text."
-          },
-          "filter_path": {
             "type": "string"
           }
         },
         "required": [
           "line",
           "new_block_text"
-        ]
+        ],
+        "additionalProperties": false
       },
-      "discovery": "verified via MCP1.30.0 stdio"
+      "discovery": "13 filter tools verified by cold MCP; saved 46-tool aggregate schemas: .local/logs/trade-nonfilter-audit-20260916/verified-discovery.json"
     },
     {
       "server": "trade",
       "name": "set_basetype_rule",
       "source": "poe-trade-mcp/poe_filter.py",
-      "line": 236,
-      "status": "not_audited",
-      "evidence": [],
-      "description": "Convenience tool: add a top-priority Show or Hide rule for one or more BaseTypes. Inserts into the [[0100]] override section. If a Bosch override already exists for the same basetype, it is replaced.",
+      "line": 237,
+      "status": "partial_contract_verified",
+      "evidence": [
+        "2026-09-15/16 bounded filter audit: Private temporary-file contracts verify exact top-priority base overrides, no overlapping-rule replacement and rejection of injected commands.",
+        "Scope and remaining gaps: No rules changed in the user filter; native catalog absence is not proof that an existing game item is invalid.",
+        "Existing offline verification: 71 dedicated PoE2 filter tests passed in poe-trade-mcp/tests/test_poe2_filters.py; synthetic/native-shaped fixtures and private temporary artifacts. No tests or new MCP calls were run for this coverage update."
+      ],
+      "description": "Create a highest-priority exact base rule; only an equivalent managed rule is replaced.",
       "schema": {
         "type": "object",
         "properties": {
-          "action": {
+          "filter_path": {
             "type": "string",
-            "description": "'Show' or 'Hide'"
+            "description": "Absolute local .filter path; POE_FILTER_PATH may configure the default"
+          },
+          "action": {
+            "enum": [
+              "Show",
+              "Hide"
+            ]
           },
           "basetypes": {
             "type": "array",
+            "minItems": 1,
+            "maxItems": 200,
+            "uniqueItems": true,
             "items": {
-              "type": "string"
-            },
-            "description": "List of BaseType strings, e.g. ['Orb of Chance', 'Orb of Alteration']"
+              "type": "string",
+              "minLength": 1
+            }
           },
           "exact_match": {
-            "type": "boolean",
-            "description": "Use == (exact match) instead of substring. Default true."
+            "type": "boolean"
           },
           "comment": {
-            "type": "string",
-            "description": "Optional comment to add to the block header."
+            "type": "string"
           },
           "extra_conditions": {
-            "type": "string",
-            "description": "Optional extra condition lines, e.g. 'StackSize >= 3'"
-          },
-          "filter_path": {
             "type": "string"
           }
         },
         "required": [
           "action",
           "basetypes"
-        ]
+        ],
+        "additionalProperties": false
       },
-      "discovery": "verified via MCP1.30.0 stdio"
+      "discovery": "13 filter tools verified by cold MCP; saved 46-tool aggregate schemas: .local/logs/trade-nonfilter-audit-20260916/verified-discovery.json"
     },
     {
       "server": "data",
       "name": "search_gem",
       "source": "poe-data-mcp/poe_data_mcp/server.py",
-      "line": 78,
+      "line": 83,
       "status": "partial",
       "evidence": [
-        "Real MCP call against installed PoB2 or current PoE2 remote source on 2026-09-15; tests in poe-data-mcp/tests. Full argument/source coverage not established."
+        "2026-09-16 MSK bounded audit: Spark: two installed gem definitions and IDs; Data/Gems.lua source.",
+        "Private per-tool evidence: .local/data-audit-20260916/core-search_gem.json; provenance, timestamps and hashes: .local/data-audit-20260916/report.json. Audit result: bounded_pass.",
+        "Scope and remaining gaps: Native file age is not patch age; bounded keyword sample only.",
+        "Existing audit verification: 73 data tests passed (19 added), not rerun for this coverage-only update. A textual timeout, HTTP 403 or unsupported response is not success even when MCP isError=false."
       ],
       "description": "Search PoE2 gem names and skill descriptions in the installed PoB2 data.",
       "schema": {
@@ -5849,16 +6239,19 @@
         "title": "search_gemArguments",
         "type": "object"
       },
-      "discovery": "verified via MCP1.30.0 stdio"
+      "discovery": "26 tools verified through configured cold WSL MCP launcher; .local/data-audit-20260916/gem-final-registry.json; discovery is not full readiness"
     },
     {
       "server": "data",
       "name": "get_gem_detail",
       "source": "poe-data-mcp/poe_data_mcp/server.py",
-      "line": 79,
+      "line": 84,
       "status": "partial",
       "evidence": [
-        "Direct live source-function call verified on 2026-09-15; protocol registration verified separately."
+        "2026-09-16 MSK bounded audit: Live PoE2DB Spark: two distinct skill panes, implicit effects and selected level rows. Duplicate debug tooltips removed.",
+        "Private per-tool evidence: .local/data-audit-20260916/gem-final-get_gem_detail.json; provenance, timestamps and hashes: .local/data-audit-20260916/report.json. Audit result: bounded_pass.",
+        "Scope and remaining gaps: Source level table merges base/cold-infused mode columns; now labelled. No character damage calculation or inferred single-mode curve.",
+        "Existing audit verification: 73 data tests passed (19 added), not rerun for this coverage-only update. A textual timeout, HTTP 403 or unsupported response is not success even when MCP isError=false."
       ],
       "description": "Read exact PoE2 gem tooltips and selected level rows, separating skill definitions.",
       "schema": {
@@ -5874,15 +6267,20 @@
         "title": "get_gem_detailArguments",
         "type": "object"
       },
-      "discovery": "verified via MCP1.30.0 stdio"
+      "discovery": "26 tools verified through configured cold WSL MCP launcher; .local/data-audit-20260916/gem-final-registry.json; discovery is not full readiness"
     },
     {
       "server": "data",
       "name": "search_item",
       "source": "poe-data-mcp/poe_data_mcp/server.py",
-      "line": 80,
-      "status": "not_audited",
-      "evidence": [],
+      "line": 85,
+      "status": "partial",
+      "evidence": [
+        "2026-09-16 MSK bounded audit: Choir: one native unique; current variant only; Jade Amulet base.",
+        "Private per-tool evidence: .local/data-audit-20260916/post-search_item.json; provenance, timestamps and hashes: .local/data-audit-20260916/report.json. Audit result: bounded_pass.",
+        "Scope and remaining gaps: Uniques only. Verisium Choir is not an exact source name and returned zero; no synthesized Verisium conversion. Definitions do not establish market availability.",
+        "Existing audit verification: 73 data tests passed (19 added), not rerun for this coverage-only update. A textual timeout, HTTP 403 or unsupported response is not success even when MCP isError=false."
+      ],
       "description": "Search PoE2 uniques by name, base or modifier using local PoB2 definitions.",
       "schema": {
         "properties": {
@@ -5897,16 +6295,19 @@
         "title": "search_itemArguments",
         "type": "object"
       },
-      "discovery": "verified via MCP1.30.0 stdio"
+      "discovery": "26 tools verified through configured cold WSL MCP launcher; .local/data-audit-20260916/gem-final-registry.json; discovery is not full readiness"
     },
     {
       "server": "data",
       "name": "get_item_detail",
       "source": "poe-data-mcp/poe_data_mcp/server.py",
-      "line": 81,
+      "line": 86,
       "status": "partial",
       "evidence": [
-        "Real MCP call against installed PoB2 or current PoE2 remote source on 2026-09-15; tests in poe-data-mcp/tests. Full argument/source coverage not established."
+        "2026-09-16 MSK bounded audit: Choir of the Storm: current and pre-0.4.0 variants separated; native amulet.lua provenance.",
+        "Private per-tool evidence: .local/data-audit-20260916/post-get_item_detail.json; provenance, timestamps and hashes: .local/data-audit-20260916/report.json. Audit result: bounded_pass.",
+        "Scope and remaining gaps: Installed source uses Jade Amulet; do not infer a traded Verisium variant or merge old modifiers. Arbitrary rares/base catalog are outside this tool.",
+        "Existing audit verification: 73 data tests passed (19 added), not rerun for this coverage-only update. A textual timeout, HTTP 403 or unsupported response is not success even when MCP isError=false."
       ],
       "description": "Get local PoE2 unique definitions with current and legacy variants separated.",
       "schema": {
@@ -5922,16 +6323,21 @@
         "title": "get_item_detailArguments",
         "type": "object"
       },
-      "discovery": "verified via MCP1.30.0 stdio"
+      "discovery": "26 tools verified through configured cold WSL MCP launcher; .local/data-audit-20260916/gem-final-registry.json; discovery is not full readiness"
     },
     {
       "server": "data",
       "name": "search_passive",
       "source": "poe-data-mcp/poe_data_mcp/server.py",
-      "line": 82,
-      "status": "not_audited",
-      "evidence": [],
-      "description": "Search for Path of Exile passive skill tree nodes by name or stat keyword.\n\n    Searches across keystones, notables, masteries, and ascendancy passives.\n    Small passives and jewel sockets are excluded unless directly matched by name.\n\n    Args:\n        query: Search keyword to match against node names and stats.\n        type: Optional filter: \"keystone\", \"notable\", \"mastery\", or \"ascendancy\". If empty, searches all.\n    ",
+      "line": 87,
+      "status": "partial",
+      "evidence": [
+        "2026-09-16 MSK bounded audit: Chaos Inoculation keystone: chaos/bleeding immunity and maximum life 1; source TreeData/0_5/tree.lua now present.",
+        "Private per-tool evidence: .local/data-audit-20260916/post-search_passive.json; provenance, timestamps and hashes: .local/data-audit-20260916/report.json. Audit result: bounded_pass.",
+        "Scope and remaining gaps: Name/stat search capped at 20. Unknown type strings return empty; PoE1 mastery is not a PoE2 capability.",
+        "Existing audit verification: 73 data tests passed (19 added), not rerun for this coverage-only update. A textual timeout, HTTP 403 or unsupported response is not success even when MCP isError=false."
+      ],
+      "description": "Search for Path of Exile passive skill tree nodes by name or stat keyword.\n\n    Searches the configured game's keystones, notables, and ascendancy passives.\n    Masteries are available only with explicit POE_GAME=poe1.\n    Small passives and jewel sockets are excluded unless directly matched by name.\n\n    Args:\n        query: Search keyword to match against node names and stats.\n        type: Optional node type: \"keystone\", \"notable\", \"ascendancy\", \"small\",\n            \"jewel_socket\", or PoE1-only \"mastery\". Empty searches all.\n    ",
       "schema": {
         "properties": {
           "query": {
@@ -5950,18 +6356,21 @@
         "title": "search_passiveArguments",
         "type": "object"
       },
-      "discovery": "verified via MCP1.30.0 stdio"
+      "discovery": "26 tools verified through configured cold WSL MCP launcher; .local/data-audit-20260916/gem-final-registry.json; discovery is not full readiness"
     },
     {
       "server": "data",
       "name": "get_passive_detail",
       "source": "poe-data-mcp/poe_data_mcp/server.py",
-      "line": 83,
+      "line": 88,
       "status": "partial",
       "evidence": [
-        "Real MCP call against installed PoB2 or current PoE2 remote source on 2026-09-15; tests in poe-data-mcp/tests. Full argument/source coverage not established."
+        "2026-09-16 MSK bounded audit: Chaos Inoculation: native stats, connections and correctly formatted flavour text; source preserved.",
+        "Private per-tool evidence: .local/data-audit-20260916/post-get_passive_detail.json; provenance, timestamps and hashes: .local/data-audit-20260916/report.json. Audit result: bounded_pass.",
+        "Scope and remaining gaps: Duplicate node names are not disambiguated by ID in this interface. One known keystone sampled.",
+        "Existing audit verification: 73 data tests passed (19 added), not rerun for this coverage-only update. A textual timeout, HTTP 403 or unsupported response is not success even when MCP isError=false."
       ],
-      "description": "Get detailed information about a specific passive skill tree node.\n\n    Returns full stats, connections, ascendancy info, mastery effects, and flavor text.\n\n    Args:\n        name: The passive node name, e.g. \"Iron Reflexes\" or \"Divine Shield\".\n    ",
+      "description": "Get detailed information about a specific passive skill tree node.\n\n    Returns full stats, connections, ascendancy info, mastery effects, and flavor text.\n\n    Args:\n        name: The passive node name, e.g. \"Chaos Inoculation\".\n    ",
       "schema": {
         "properties": {
           "name": {
@@ -5975,16 +6384,19 @@
         "title": "get_passive_detailArguments",
         "type": "object"
       },
-      "discovery": "verified via MCP1.30.0 stdio"
+      "discovery": "26 tools verified through configured cold WSL MCP launcher; .local/data-audit-20260916/gem-final-registry.json; discovery is not full readiness"
     },
     {
       "server": "data",
       "name": "search_mods",
       "source": "poe-data-mcp/poe_data_mcp/server.py",
-      "line": 86,
+      "line": 91,
       "status": "partial",
       "evidence": [
-        "Real MCP call against installed PoB2 or current PoE2 remote source on 2026-09-15; tests in poe-data-mcp/tests. Full argument/source coverage not established."
+        "2026-09-16 MSK bounded audit: Crossbow Physical Damage: 34 eligible native modifiers, ordered weight eligibility and mod file sources.",
+        "Private per-tool evidence: .local/data-audit-20260916/post-search_mods.json; provenance, timestamps and hashes: .local/data-audit-20260916/report.json. Audit result: bounded_pass.",
+        "Scope and remaining gaps: Reload returned zero in native ordinary/corrupted pools, while CoE found two method-specific Desecrated mods. Not proof those mods do not exist; native pool coverage is narrower.",
+        "Existing audit verification: 73 data tests passed (19 added), not rerun for this coverage-only update. A textual timeout, HTTP 403 or unsupported response is not success even when MCP isError=false."
       ],
       "description": "Search PoE2 item modifiers from installed PoB2 tables by class or exact base.\n\n    Examples: crossbow, charms, quarterstaff, helmets str, life flasks, Ruby.\n    Uses ordered spawn-tag rules and separate charm/flask/jewel mod domains.\n    PoB2 weights indicate eligibility, not measured probabilities. Corrupted\n    modifiers are labeled separately. POE_GAME=poe1 retains the old PoEDB source.\n    ",
       "schema": {
@@ -6005,16 +6417,19 @@
         "title": "search_modsArguments",
         "type": "object"
       },
-      "discovery": "verified via MCP1.30.0 stdio"
+      "discovery": "26 tools verified through configured cold WSL MCP launcher; .local/data-audit-20260916/gem-final-registry.json; discovery is not full readiness"
     },
     {
       "server": "data",
       "name": "craftofexile_cache_status",
       "source": "poe-data-mcp/poe_data_mcp/server.py",
-      "line": 89,
+      "line": 94,
       "status": "partial",
       "evidence": [
-        "Real MCP call against installed PoB2 or current PoE2 remote source on 2026-09-15; tests in poe-data-mcp/tests. Full argument/source coverage not established."
+        "2026-09-16 MSK bounded audit: Validated configured project cache: PoE2 version 4.5.5.1.5, 104 classes, 2488 items, 3183 mods, 95 essences.",
+        "Private per-tool evidence: .local/data-audit-20260916/core-craftofexile_cache_status.json; provenance, timestamps and hashes: .local/data-audit-20260916/report.json. Audit result: bounded_pass.",
+        "Scope and remaining gaps: Validation proves snapshot structure/source references, not that upstream has no newer patch.",
+        "Existing audit verification: 73 data tests passed (19 added), not rerun for this coverage-only update. A textual timeout, HTTP 403 or unsupported response is not success even when MCP isError=false."
       ],
       "description": "Show the selected game's Craft of Exile cache, patch, source and freshness.",
       "schema": {
@@ -6022,15 +6437,20 @@
         "title": "craftofexile_cache_statusArguments",
         "type": "object"
       },
-      "discovery": "verified via MCP1.30.0 stdio"
+      "discovery": "26 tools verified through configured cold WSL MCP launcher; .local/data-audit-20260916/gem-final-registry.json; discovery is not full readiness"
     },
     {
       "server": "data",
       "name": "update_craftofexile_cache",
       "source": "poe-data-mcp/poe_data_mcp/server.py",
-      "line": 90,
-      "status": "not_audited",
-      "evidence": [],
+      "line": 95,
+      "status": "partial",
+      "evidence": [
+        "2026-09-16 MSK bounded audit: force=false returned Unchanged; recent validated cache reused. Exact cache SHA-256 and fetched/checked timestamps unchanged.",
+        "Private per-tool evidence: .local/data-audit-20260916/core-update_craftofexile_cache.json; provenance, timestamps and hashes: .local/data-audit-20260916/report.json. Audit result: bounded_pass.",
+        "Scope and remaining gaps: No forced refresh/download performed. Update/download error branches covered by existing synthetic tests; fresh live download not re-audited.",
+        "Existing audit verification: 73 data tests passed (19 added), not rerun for this coverage-only update. A textual timeout, HTTP 403 or unsupported response is not success even when MCP isError=false."
+      ],
       "description": "Refresh the selected game's Craft of Exile cache; check at most every 12h.\n\n    PoE2 discovers current patch JSON and English localization on the beta site.\n    Downloads are rate limited; a failed refresh preserves the previous snapshot.\n    force bypasses freshness checks, but does not bypass source rate limits.\n    ",
       "schema": {
         "properties": {
@@ -6043,16 +6463,19 @@
         "title": "update_craftofexile_cacheArguments",
         "type": "object"
       },
-      "discovery": "verified via MCP1.30.0 stdio"
+      "discovery": "26 tools verified through configured cold WSL MCP launcher; .local/data-audit-20260916/gem-final-registry.json; discovery is not full readiness"
     },
     {
       "server": "data",
       "name": "search_craft_mods",
       "source": "poe-data-mcp/poe_data_mcp/server.py",
-      "line": 91,
+      "line": 96,
       "status": "partial",
       "evidence": [
-        "Real MCP call against installed PoB2 or current PoE2 remote source on 2026-09-15; tests in poe-data-mcp/tests. Full argument/source coverage not established."
+        "2026-09-16 MSK bounded audit: Reload on crossbow: two Desecrated modifiers, correct PoE2 class and source IDs.",
+        "Private per-tool evidence: .local/data-audit-20260916/core-search_craft_mods.json; provenance, timestamps and hashes: .local/data-audit-20260916/report.json. Audit result: bounded_pass.",
+        "Scope and remaining gaps: Method-specific results are not ordinary affix guarantees or measured crafting odds.",
+        "Existing audit verification: 73 data tests passed (19 added), not rerun for this coverage-only update. A textual timeout, HTTP 403 or unsupported response is not success even when MCP isError=false."
       ],
       "description": "Search localized crafting mods, optionally filtered by their actual item class.\n\n    Examples: query='reload speed', item_class='crossbow'; query='maximum life'.\n    PoE2 source weights are estimates, not guaranteed in-game probabilities.\n    ",
       "schema": {
@@ -6073,16 +6496,19 @@
         "title": "search_craft_modsArguments",
         "type": "object"
       },
-      "discovery": "verified via MCP1.30.0 stdio"
+      "discovery": "26 tools verified through configured cold WSL MCP launcher; .local/data-audit-20260916/gem-final-registry.json; discovery is not full readiness"
     },
     {
       "server": "data",
       "name": "get_craft_base_items",
       "source": "poe-data-mcp/poe_data_mcp/server.py",
-      "line": 92,
+      "line": 97,
       "status": "partial",
       "evidence": [
-        "Real MCP call against installed PoB2 or current PoE2 remote source on 2026-09-15; tests in poe-data-mcp/tests. Full argument/source coverage not established."
+        "2026-09-16 MSK bounded audit: Crossbow: 33 real CoE base names with class/drop level.",
+        "Private per-tool evidence: .local/data-audit-20260916/core-get_craft_base_items.json; provenance, timestamps and hashes: .local/data-audit-20260916/report.json. Audit result: bounded_pass.",
+        "Scope and remaining gaps: One class sample, not exhaustive current-game base validation.",
+        "Existing audit verification: 73 data tests passed (19 added), not rerun for this coverage-only update. A textual timeout, HTTP 403 or unsupported response is not success even when MCP isError=false."
       ],
       "description": "Find crafting base names and drop levels, joined to their item classes.",
       "schema": {
@@ -6101,16 +6527,19 @@
         "title": "get_craft_base_itemsArguments",
         "type": "object"
       },
-      "discovery": "verified via MCP1.30.0 stdio"
+      "discovery": "26 tools verified through configured cold WSL MCP launcher; .local/data-audit-20260916/gem-final-registry.json; discovery is not full readiness"
     },
     {
       "server": "data",
       "name": "get_craft_tiers",
       "source": "poe-data-mcp/poe_data_mcp/server.py",
-      "line": 93,
+      "line": 98,
       "status": "partial",
       "evidence": [
-        "Exact Chiming Staff base resolves to native CoE class and real spell-damage tiers; fixture regressions and live source verified on 2026-09-15."
+        "2026-09-16 MSK bounded audit: Reload on crossbow: two distinct mod groups, minimum iLvl 65, source IDs and unknown marker weight exposed.",
+        "Private per-tool evidence: .local/data-audit-20260916/core-get_craft_tiers.json; provenance, timestamps and hashes: .local/data-audit-20260916/report.json. Audit result: bounded_pass.",
+        "Scope and remaining gaps: Source-estimated weights and inferred group tier ordering are not measured probabilities.",
+        "Existing audit verification: 73 data tests passed (19 added), not rerun for this coverage-only update. A textual timeout, HTTP 403 or unsupported response is not success even when MCP isError=false."
       ],
       "description": "Show crafting mod tiers, level requirements, ranges and source weights.\n\n    base_type is a class, e.g. 'crossbow', 'ring', 'helmet str', 'quarterstaff'.\n    Special mod pools are labeled separately; weights do not establish odds.\n    ",
       "schema": {
@@ -6131,15 +6560,20 @@
         "title": "get_craft_tiersArguments",
         "type": "object"
       },
-      "discovery": "verified via MCP1.30.0 stdio"
+      "discovery": "26 tools verified through configured cold WSL MCP launcher; .local/data-audit-20260916/gem-final-registry.json; discovery is not full readiness"
     },
     {
       "server": "data",
       "name": "get_fossil_info",
       "source": "poe-data-mcp/poe_data_mcp/server.py",
-      "line": 94,
-      "status": "not_audited",
-      "evidence": [],
+      "line": 99,
+      "status": "unsupported_poe2",
+      "evidence": [
+        "2026-09-16 MSK bounded audit: Jagged explicitly reports unsupported PoE2 fossil affinity mechanics.",
+        "Private per-tool evidence: .local/data-audit-20260916/core-get_fossil_info.json; provenance, timestamps and hashes: .local/data-audit-20260916/report.json. Audit result: unsupported_poe1_mechanic.",
+        "Scope and remaining gaps: UNSUPPORTED PoE1 mechanic, not restored and not a useful fossil result; essences/omens are not one-to-one replacements.",
+        "Existing audit verification: 73 data tests passed (19 added), not rerun for this coverage-only update. A textual timeout, HTTP 403 or unsupported response is not success even when MCP isError=false."
+      ],
       "description": "Look up PoE1 fossil affinities; report the documented unsupported gap in PoE2.",
       "schema": {
         "properties": {
@@ -6154,16 +6588,19 @@
         "title": "get_fossil_infoArguments",
         "type": "object"
       },
-      "discovery": "verified via MCP1.30.0 stdio"
+      "discovery": "26 tools verified through configured cold WSL MCP launcher; .local/data-audit-20260916/gem-final-registry.json; discovery is not full readiness"
     },
     {
       "server": "data",
       "name": "get_essence_mods",
       "source": "poe-data-mcp/poe_data_mcp/server.py",
-      "line": 95,
+      "line": 100,
       "status": "partial",
       "evidence": [
-        "Real MCP call against installed PoB2 or current PoE2 remote source on 2026-09-15; tests in poe-data-mcp/tests. Full argument/source coverage not established."
+        "2026-09-16 MSK bounded audit: Abrasion on crossbows: Lesser/normal/Greater/Perfect outcome rows from CoE, alternatives distinguished.",
+        "Private per-tool evidence: .local/data-audit-20260916/core-get_essence_mods.json; provenance, timestamps and hashes: .local/data-audit-20260916/report.json. Audit result: bounded_pass.",
+        "Scope and remaining gaps: Bounded essence/class sample; no guaranteed combined outcome or simulated craft.",
+        "Existing audit verification: 73 data tests passed (19 added), not rerun for this coverage-only update. A textual timeout, HTTP 403 or unsupported response is not success even when MCP isError=false."
       ],
       "description": "Look up essence modifier outcomes by item class from the selected game's data.\n\n    PoE2 examples: 'Abrasion', 'the Mind', 'Enhancement', item_type='crossbow'.\n    Multiple outcomes indicate a choice from the listed pool, not all guaranteed.\n    ",
       "schema": {
@@ -6184,16 +6621,19 @@
         "title": "get_essence_modsArguments",
         "type": "object"
       },
-      "discovery": "verified via MCP1.30.0 stdio"
+      "discovery": "26 tools verified through configured cold WSL MCP launcher; .local/data-audit-20260916/gem-final-registry.json; discovery is not full readiness"
     },
     {
       "server": "data",
       "name": "env_search",
       "source": "poe-data-mcp/poe_data_mcp/server.py",
-      "line": 98,
+      "line": 103,
       "status": "partial",
       "evidence": [
-        "Real MCP call against installed PoB2 or current PoE2 remote source on 2026-09-15; tests in poe-data-mcp/tests. Full argument/source coverage not established."
+        "2026-09-16 MSK bounded audit: Waystones: 16 CoE tiers. Creek maps: MapCreek and Tierney, the Hateful from native WorldAreas.lua.",
+        "Private per-tool evidence: .local/data-audit-20260916/post-env_search.json; provenance, timestamps and hashes: .local/data-audit-20260916/report.json. Audit result: bounded_pass.",
+        "Scope and remaining gaps: No PoE1 scarabs fallback; map definition level is distinct from actual generated area level.",
+        "Existing audit verification: 73 data tests passed (19 added), not rerun for this coverage-only update. A textual timeout, HTTP 403 or unsupported response is not success even when MCP isError=false."
       ],
       "description": "Search PoE2 maps/areas from local PoB2 and tablets/waystones from Craft of Exile.\n\n    Categories: maps, areas, tablets, waystones. Empty searches all available\n    sources; unavailable categories are reported explicitly. PoE1 scarabs have\n    no equivalent mapping; use tablets for PoE2's distinct map-content items.\n    ",
       "schema": {
@@ -6214,16 +6654,19 @@
         "title": "env_searchArguments",
         "type": "object"
       },
-      "discovery": "verified via MCP1.30.0 stdio"
+      "discovery": "26 tools verified through configured cold WSL MCP launcher; .local/data-audit-20260916/gem-final-registry.json; discovery is not full readiness"
     },
     {
       "server": "data",
       "name": "env_detail",
       "source": "poe-data-mcp/poe_data_mcp/server.py",
-      "line": 99,
+      "line": 104,
       "status": "partial",
       "evidence": [
-        "Real MCP call against installed PoB2 or current PoE2 remote source on 2026-09-15; tests in poe-data-mcp/tests. Full argument/source coverage not established."
+        "2026-09-16 MSK bounded audit: Waystone (Tier 1): ID 801, tier 1/drop level 58 with CoE source metadata.",
+        "Private per-tool evidence: .local/data-audit-20260916/post-env_detail.json; provenance, timestamps and hashes: .local/data-audit-20260916/report.json. Audit result: bounded_pass.",
+        "Scope and remaining gaps: Breach by itself is not a supported exact area/item name. Does not constitute a complete mechanic encyclopedia.",
+        "Existing audit verification: 73 data tests passed (19 added), not rerun for this coverage-only update. A textual timeout, HTTP 403 or unsupported response is not success even when MCP isError=false."
       ],
       "description": "Show a PoE2 map/area, tablet or waystone by exact name or native ID.\n\n    Includes source data and freshness. Ambiguous names list choices. Area\n    definition level is separate from the level determined by a Waystone.\n    ",
       "schema": {
@@ -6239,16 +6682,19 @@
         "title": "env_detailArguments",
         "type": "object"
       },
-      "discovery": "verified via MCP1.30.0 stdio"
+      "discovery": "26 tools verified through configured cold WSL MCP launcher; .local/data-audit-20260916/gem-final-registry.json; discovery is not full readiness"
     },
     {
       "server": "data",
       "name": "price_check",
       "source": "poe-data-mcp/poe_data_mcp/server.py",
-      "line": 102,
+      "line": 107,
       "status": "partial",
       "evidence": [
-        "Real MCP call against installed PoB2 or current PoE2 remote source on 2026-09-15; tests in poe-data-mcp/tests. Full argument/source coverage not established."
+        "2026-09-16 MSK bounded audit: Live Forbidden Rites Divine Orb: PoE2 exchange endpoint, primary divine plus response-local exalted/chaos rates and volume.",
+        "Private per-tool evidence: .local/data-audit-20260916/core-price_check.json; provenance, timestamps and hashes: .local/data-audit-20260916/report.json. Audit result: bounded_pass.",
+        "Scope and remaining gaps: Aggregate reference, not executable FX or a listing quote. Only Currency category rechecked here; stash variants/categories remain bounded prior coverage.",
+        "Existing audit verification: 73 data tests passed (19 added), not rerun for this coverage-only update. A textual timeout, HTTP 403 or unsupported response is not success even when MCP isError=false."
       ],
       "description": "Price PoE2 currencies, lineage gems, uniques or crafting items with explicit units.\n\n    category: currency, gem, unique, uniqueaccessory, uniquecharm, rune, essence,\n    soulcore, idol, omen, emotion, catalyst, verisium, tablet, fragment, expedition.\n    league: explicit league name/slug or POE_LEAGUE. Ambiguity is an error.\n    ",
       "schema": {
@@ -6274,16 +6720,19 @@
         "title": "price_checkArguments",
         "type": "object"
       },
-      "discovery": "verified via MCP1.30.0 stdio"
+      "discovery": "26 tools verified through configured cold WSL MCP launcher; .local/data-audit-20260916/gem-final-registry.json; discovery is not full readiness"
     },
     {
       "server": "data",
       "name": "currency_overview",
       "source": "poe-data-mcp/poe_data_mcp/server.py",
-      "line": 103,
+      "line": 108,
       "status": "partial",
       "evidence": [
-        "Real MCP call against installed PoB2 or current PoE2 remote source on 2026-09-15; tests in poe-data-mcp/tests. Full argument/source coverage not established."
+        "2026-09-16 MSK bounded audit: Live Forbidden Rites PoE2 currency reference rows; shared cached snapshot reused after price_check.",
+        "Private per-tool evidence: .local/data-audit-20260916/core-currency_overview.json; provenance, timestamps and hashes: .local/data-audit-20260916/report.json. Audit result: bounded_pass.",
+        "Scope and remaining gaps: Retrieval time is not snapshot age; volume is not listing count; not best-market coverage.",
+        "Existing audit verification: 73 data tests passed (19 added), not rerun for this coverage-only update. A textual timeout, HTTP 403 or unsupported response is not success even when MCP isError=false."
       ],
       "description": "Get PoE2 currency exchange values in each currency supplied by the source.",
       "schema": {
@@ -6297,18 +6746,21 @@
         "title": "currency_overviewArguments",
         "type": "object"
       },
-      "discovery": "verified via MCP1.30.0 stdio"
+      "discovery": "26 tools verified through configured cold WSL MCP launcher; .local/data-audit-20260916/gem-final-registry.json; discovery is not full readiness"
     },
     {
       "server": "data",
       "name": "fetch_wiki_page",
       "source": "poe-data-mcp/poe_data_mcp/server.py",
-      "line": 106,
+      "line": 111,
       "status": "partial",
       "evidence": [
-        "Direct live source-function call verified on 2026-09-15; protocol registration verified separately."
+        "2026-09-16 MSK bounded audit: Live poe2wiki Chaos Inoculation mechanics agrees with native maximum life 1 plus chaos/bleeding immunity.",
+        "Private per-tool evidence: .local/data-audit-20260916/core-fetch_wiki_page.json; provenance, timestamps and hashes: .local/data-audit-20260916/report.json. Audit result: bounded_pass.",
+        "Scope and remaining gaps: Community content may lag; no exhaustive mechanics validation or source revision timestamp.",
+        "Existing audit verification: 73 data tests passed (19 added), not rerun for this coverage-only update. A textual timeout, HTTP 403 or unsupported response is not success even when MCP isError=false."
       ],
-      "description": "Fetch useful content from a poewiki.net page, stripping navigation and noise.\n\n    Use this to get detailed mechanics, acquisition info, and recipes from the\n    Community Wiki link returned by get_item_detail or get_gem_detail.\n\n    Args:\n        wiki_url: Full article URL on the configured game wiki (poe2wiki.net for PoE2)\n    ",
+      "description": "Fetch article content from the configured game's community wiki.\n\n    Use this to get detailed mechanics, acquisition info, and recipes from the\n    Community Wiki link returned by get_item_detail or get_gem_detail.\n\n    Args:\n        wiki_url: Full article URL on the configured game wiki (poe2wiki.net for PoE2)\n    ",
       "schema": {
         "properties": {
           "wiki_url": {
@@ -6322,18 +6774,21 @@
         "title": "fetch_wiki_pageArguments",
         "type": "object"
       },
-      "discovery": "verified via MCP1.30.0 stdio"
+      "discovery": "26 tools verified through configured cold WSL MCP launcher; .local/data-audit-20260916/gem-final-registry.json; discovery is not full readiness"
     },
     {
       "server": "data",
       "name": "wiki_cargo_query",
       "source": "poe-data-mcp/poe_data_mcp/server.py",
-      "line": 107,
+      "line": 112,
       "status": "partial",
       "evidence": [
-        "Direct live source-function call verified on 2026-09-15; protocol registration verified separately."
+        "2026-09-16 MSK bounded audit: Live PoE2 wiki Cargo items query returned Divine Orb / Currency Item.",
+        "Private per-tool evidence: .local/data-audit-20260916/core-wiki_cargo_query.json; provenance, timestamps and hashes: .local/data-audit-20260916/report.json. Audit result: bounded_pass.",
+        "Scope and remaining gaps: Bounded table/schema sample. Output lacks explicit source URL/revision timestamp; target is proven by configured-game wrapper and recorded request.",
+        "Existing audit verification: 73 data tests passed (19 added), not rerun for this coverage-only update. A textual timeout, HTTP 403 or unsupported response is not success even when MCP isError=false."
       ],
-      "description": "Query poewiki Cargo tables directly — database-style access to item/mod data\n    instead of fetching wiki pages one at a time.\n\n    Answers \"list ALL X with their properties\" in one call: every currency item with\n    descriptions, uniques by base, mods by domain. Found 2026-08-05 enumerating the\n    3.29 Astrolabe varieties, which exist in no offline data source.\n\n    Args:\n        tables: Cargo table(s). Most useful: \"items\" (name, class, description,\n            drop_text, base_item, required_level), \"mods\" (id, name, domain,\n            generation_type, stat_text), \"skill_gems\". See Special:CargoTables.\n        fields: Table-qualified, comma-separated: \"items.name,items.class\".\n        where: SQL-ish filter, e.g. items.class=\"Currency Item\" or\n            items.name LIKE \"%Astrolabe%\". Strongly recommended.\n        limit: 1-500 rows (default 50).  offset: pagination for larger sets.\n\n    Returns a count line then one \" | \"-joined row per line.\n    Wiki lags new leagues days-to-weeks: empty result != nonexistent in game.\n    Etiquette: honest UA, cache results locally, keep queries modest.\n    ",
+      "description": "Query the configured game's wiki Cargo tables for item/mod data\n    instead of fetching wiki pages one at a time.\n\n    Returns a bounded page of rows. Uses poe2wiki.net with POE_GAME=poe2;\n    poewiki.net requires explicit POE_GAME=poe1. Each wiki has its own schema.\n\n    Args:\n        tables: Cargo table(s). Most useful: \"items\" (name, class, description,\n            drop_text, base_item, required_level), \"mods\" (id, name, domain,\n            generation_type, stat_text), \"skill_gems\". See Special:CargoTables.\n        fields: Table-qualified, comma-separated: \"items.name,items.class\".\n        where: SQL-ish filter, e.g. items.class=\"Currency Item\" or\n            items.name=\"Divine Orb\". Strongly recommended.\n        limit: 1-500 rows (default 50).  offset: pagination for larger sets.\n\n    Returns a count line then one \" | \"-joined row per line.\n    Wiki lags new leagues days-to-weeks: empty result != nonexistent in game.\n    Etiquette: honest UA, cache results locally, keep queries modest.\n    ",
       "schema": {
         "properties": {
           "tables": {
@@ -6367,16 +6822,19 @@
         "title": "wiki_cargo_queryArguments",
         "type": "object"
       },
-      "discovery": "verified via MCP1.30.0 stdio"
+      "discovery": "26 tools verified through configured cold WSL MCP launcher; .local/data-audit-20260916/gem-final-registry.json; discovery is not full readiness"
     },
     {
       "server": "data",
       "name": "parse_pob",
       "source": "poe-data-mcp/poe_data_mcp/server.py",
-      "line": 110,
-      "status": "partial",
+      "line": 115,
+      "status": "partial_contract_verified",
       "evidence": [
-        "Real MCP call against installed PoB2 or current PoE2 remote source on 2026-09-15; tests in poe-data-mcp/tests. Full argument/source coverage not established."
+        "2026-09-16 MSK bounded audit: Synthetic PathOfBuilding2 code parsed Blood Mage, Spirit 40, active Spark skill set and charm itemId reference.",
+        "Private per-tool evidence: .local/data-audit-20260916/core-parse_pob.json; provenance, timestamps and hashes: .local/data-audit-20260916/report.json. Audit result: synthetic_contract_only.",
+        "Scope and remaining gaps: CONTRACT ONLY: no user build read/write or native calculation; public remote build-host fetch paths not exercised.",
+        "Existing audit verification: 73 data tests passed (19 added), not rerun for this coverage-only update. A textual timeout, HTTP 403 or unsupported response is not success even when MCP isError=false."
       ],
       "description": "Parse a Path of Building export code or share URL.\n\n    Accepts:\n    - Raw PoB export code (base64 string from PoB's Export button)\n    - pobb.in URL (https://pobb.in/xxxxx or https://pobb.in/u/username/xxxxx)\n    - Pastebin URL (https://pastebin.com/xxxxx)\n\n    Returns a build summary including class, level, key stats, skill links,\n    equipped items with mods, and allocated keystones and notable passives.\n\n    Args:\n        code_or_url: PoB export code, pobb.in share URL, or pastebin URL.\n    ",
       "schema": {
@@ -6392,16 +6850,19 @@
         "title": "parse_pobArguments",
         "type": "object"
       },
-      "discovery": "verified via MCP1.30.0 stdio"
+      "discovery": "26 tools verified through configured cold WSL MCP launcher; .local/data-audit-20260916/gem-final-registry.json; discovery is not full readiness"
     },
     {
       "server": "data",
       "name": "parse_pob_skill_groups",
       "source": "poe-data-mcp/poe_data_mcp/server.py",
-      "line": 111,
-      "status": "partial",
+      "line": 116,
+      "status": "partial_contract_verified",
       "evidence": [
-        "Real MCP call against installed PoB2 or current PoE2 remote source on 2026-09-15; tests in poe-data-mcp/tests. Full argument/source coverage not established."
+        "2026-09-16 MSK bounded audit: Same synthetic PoE2 code selected explicit Audit set (ID 2); inactive Fireball omitted and equipment sockets separate.",
+        "Private per-tool evidence: .local/data-audit-20260916/core-parse_pob_skill_groups.json; provenance, timestamps and hashes: .local/data-audit-20260916/report.json. Audit result: synthetic_contract_only.",
+        "Scope and remaining gaps: CONTRACT ONLY: not a real character, DPS validation, or exhaustive PoB XML schema coverage.",
+        "Existing audit verification: 73 data tests passed (19 added), not rerun for this coverage-only update. A textual timeout, HTTP 403 or unsupported response is not success even when MCP isError=false."
       ],
       "description": "Read structured skills and supports from the selected PoB skill set.\n\n    In PoE2, skill support groups are independent from equipment rune sockets.\n    The result lists equipment_sockets separately. skill_set selects an exact\n    ID or an unambiguous title substring; omission selects the active set.\n    ",
       "schema": {
@@ -6422,15 +6883,20 @@
         "title": "parse_pob_skill_groupsArguments",
         "type": "object"
       },
-      "discovery": "verified via MCP1.30.0 stdio"
+      "discovery": "26 tools verified through configured cold WSL MCP launcher; .local/data-audit-20260916/gem-final-registry.json; discovery is not full readiness"
     },
     {
       "server": "data",
       "name": "fetch_youtube_description",
       "source": "poe-data-mcp/poe_data_mcp/server.py",
-      "line": 114,
-      "status": "not_audited",
-      "evidence": [],
+      "line": 119,
+      "status": "blocked_external_source",
+      "evidence": [
+        "2026-09-16 MSK bounded audit: Official GGG Witch Gameplay Walkthrough, public URL: request timed out at 30 seconds.",
+        "Private per-tool evidence: .local/data-audit-20260916/external-fetch_youtube_description.json; provenance, timestamps and hashes: .local/data-audit-20260916/report.json. Audit result: external_access_gap.",
+        "Scope and remaining gaps: ACCESS GAP: no description retrieved. Public-only wrapper flags tested synthetically; no credentials, browser cookies or alternate-client access workaround.",
+        "Existing audit verification: 73 data tests passed (19 added), not rerun for this coverage-only update. A textual timeout, HTTP 403 or unsupported response is not success even when MCP isError=false."
+      ],
       "description": "Fetch the title and description from a YouTube video URL using yt-dlp.\n\n    Extracts any Path of Building links (pobb.in, poedb.tw, pastebin) and\n    common guide site links (Mobalytics, Maxroll) found in the description.\n    Requires yt-dlp to be installed (pip install yt-dlp).\n\n    Args:\n        url: YouTube video URL (e.g. https://www.youtube.com/watch?v=...)\n    ",
       "schema": {
         "properties": {
@@ -6445,15 +6911,20 @@
         "title": "fetch_youtube_descriptionArguments",
         "type": "object"
       },
-      "discovery": "verified via MCP1.30.0 stdio"
+      "discovery": "26 tools verified through configured cold WSL MCP launcher; .local/data-audit-20260916/gem-final-registry.json; discovery is not full readiness"
     },
     {
       "server": "data",
       "name": "fetch_youtube_transcript",
       "source": "poe-data-mcp/poe_data_mcp/server.py",
-      "line": 115,
-      "status": "not_audited",
-      "evidence": [],
+      "line": 120,
+      "status": "blocked_external_source",
+      "evidence": [
+        "2026-09-16 MSK bounded audit: Same official public video: bounded attempt timed out (~135 seconds including metadata); no transcript retrieved.",
+        "Private per-tool evidence: .local/data-audit-20260916/external-fetch_youtube_transcript.json; provenance, timestamps and hashes: .local/data-audit-20260916/report.json. Audit result: external_access_gap.",
+        "Scope and remaining gaps: ACCESS GAP: transcript availability unknown. Only automatic English captions supported; no public success claimed. Caption parsing verified synthetically.",
+        "Existing audit verification: 73 data tests passed (19 added), not rerun for this coverage-only update. A textual timeout, HTTP 403 or unsupported response is not success even when MCP isError=false."
+      ],
       "description": "Fetch the auto-generated transcript from a YouTube video using yt-dlp.\n\n    Returns the full spoken transcript as clean text, optionally with\n    timestamps. Useful for extracting build theory reasoning that creators\n    explain verbally but don't write in the description.\n\n    Chapter markers from the video description are shown at the top so you\n    can navigate to specific sections (gear, passive tree, skill gems, etc.).\n\n    Args:\n        url: YouTube video URL (e.g. https://www.youtube.com/watch?v=...)\n        include_timestamps: If True, include time markers (MM:SS) inline.\n                            Default False returns clean readable prose.\n    ",
       "schema": {
         "properties": {
@@ -6473,15 +6944,20 @@
         "title": "fetch_youtube_transcriptArguments",
         "type": "object"
       },
-      "discovery": "verified via MCP1.30.0 stdio"
+      "discovery": "26 tools verified through configured cold WSL MCP launcher; .local/data-audit-20260916/gem-final-registry.json; discovery is not full readiness"
     },
     {
       "server": "data",
       "name": "fetch_reddit_post",
       "source": "poe-data-mcp/poe_data_mcp/server.py",
-      "line": 118,
-      "status": "not_audited",
-      "evidence": [],
+      "line": 123,
+      "status": "blocked_external_source",
+      "evidence": [
+        "2026-09-16 MSK bounded audit: Known public PoE2 wiki announcement: Reddit denied unauthenticated JSON request with HTTP 403.",
+        "Private per-tool evidence: .local/data-audit-20260916/external-fetch_reddit_post.json; provenance, timestamps and hashes: .local/data-audit-20260916/report.json. Audit result: external_access_gap.",
+        "Scope and remaining gaps: ACCESS GAP: no post/comment data retrieved. No retry/alternate-host workaround. URL and PoE2 guide extraction verified synthetically.",
+        "Existing audit verification: 73 data tests passed (19 added), not rerun for this coverage-only update. A textual timeout, HTTP 403 or unsupported response is not success even when MCP isError=false."
+      ],
       "description": "Fetch a Reddit post and its top comments.\n\n    Returns the post title, body, top comments by score, and any\n    Path of Exile build links (pobb.in, poedb.tw, pastebin, Mobalytics,\n    YouTube) found in the post or comments.\n\n    Args:\n        url: Reddit post URL (any form: www, old, or mobile reddit).\n        num_comments: Number of top-scored comments to include (default 10).\n    ",
       "schema": {
         "properties": {
@@ -6501,29 +6977,39 @@
         "title": "fetch_reddit_postArguments",
         "type": "object"
       },
-      "discovery": "verified via MCP1.30.0 stdio"
+      "discovery": "26 tools verified through configured cold WSL MCP launcher; .local/data-audit-20260916/gem-final-registry.json; discovery is not full readiness"
     },
     {
       "server": "data",
       "name": "poe_mcp_suite_info",
       "source": "poe-data-mcp/poe_data_mcp/server.py",
-      "line": 121,
-      "status": "not_audited",
-      "evidence": [],
+      "line": 126,
+      "status": "partial",
+      "evidence": [
+        "2026-09-16 MSK bounded audit: Cold MCP now documents POE_GAME=poe2, league, native definitions, project CoE cache and public-only setup.",
+        "Private per-tool evidence: .local/data-audit-20260916/post-poe_mcp_suite_info.json; provenance, timestamps and hashes: .local/data-audit-20260916/report.json. Audit result: bounded_pass.",
+        "Scope and remaining gaps: Guidance only, not proof of sibling tool functionality. Removed stale account-session setup and unconditional whole-build/headless capability claims.",
+        "Existing audit verification: 73 data tests passed (19 added), not rerun for this coverage-only update. A textual timeout, HTTP 403 or unsupported response is not success even when MCP isError=false."
+      ],
       "description": "Install instructions and overview for the full poe_mcp_suite.\n\n    poe-data-mcp (this server) is the game-data lookup component of a larger suite.\n    Call this when the user wants deeper Path of Exile build analysis than\n    lookups provide, or asks about the full suite / Path of Building integration.\n    ",
       "schema": {
         "properties": {},
         "title": "poe_mcp_suite_infoArguments",
         "type": "object"
       },
-      "discovery": "verified via MCP1.30.0 stdio"
+      "discovery": "26 tools verified through configured cold WSL MCP launcher; .local/data-audit-20260916/gem-final-registry.json; discovery is not full readiness"
     },
     {
       "server": "trade",
       "group": "runtime-discovered",
       "name": "refresh_prices",
-      "status": "not_audited",
-      "evidence": [],
+      "status": "partial_contract_verified",
+      "evidence": [
+        "2026-09-16 bounded PoE2 nonfilter audit, Forbidden Rites: Currency=53 rows; UniqueAccessories=87. Repeat cached refresh reuses fetch time and creates no duplicate snapshot.",
+        "Private, gitignored MCP evidence: .local/logs/trade-nonfilter-audit-20260916/baseline-mcp.json (labels: refresh_Currency, refresh_UniqueAccessories, repeat_refresh). Full request/status/provenance index: .local/logs/trade-nonfilter-audit-20260916/coverage-reconciliation.json (tool refresh_prices).",
+        "Offline verification: poe-trade-mcp/tests/test_trade_economy_audit.py, tests/test_port.py and tests/test_transport.py: 50 passed. Broader poe-trade-mcp pytest tests: 131 passed, 0 failed/skipped, including synthetic filter/OAuth contracts with private temporary files; no real credentials or external auth calls. Summary: .local/logs/trade-nonfilter-audit-20260916/broader-pytest-summary.json.",
+        "Scope and remaining gaps: Hourly in-process cache respected; no force refresh/background polling; remaining 21 categories not live sampled."
+      ],
       "description": "Fetch one public PoE2 category and persist a real snapshot; respects hourly HTTP cache.",
       "schema": {
         "type": "object",
@@ -6573,8 +7059,13 @@
       "server": "trade",
       "group": "runtime-discovered",
       "name": "get_trade_filters",
-      "status": "not_audited",
-      "evidence": [],
+      "status": "partial_contract_verified",
+      "evidence": [
+        "2026-09-16 bounded PoE2 nonfilter audit, Forbidden Rites: Public trade2 metadata returns 7 groups; selected amulet/boots/rarity filters execute live.",
+        "Private, gitignored MCP evidence: .local/logs/trade-nonfilter-audit-20260916/baseline-mcp.json (labels: trade_filters). Full request/status/provenance index: .local/logs/trade-nonfilter-audit-20260916/coverage-reconciliation.json (tool get_trade_filters).",
+        "Offline verification: poe-trade-mcp/tests/test_trade_economy_audit.py, tests/test_port.py and tests/test_transport.py: 50 passed. Broader poe-trade-mcp pytest tests: 131 passed, 0 failed/skipped, including synthetic filter/OAuth contracts with private temporary files; no real credentials or external auth calls. Summary: .local/logs/trade-nonfilter-audit-20260916/broader-pytest-summary.json.",
+        "Scope and remaining gaps: Only selected filter combinations exercised; this tool is metadata, unrelated to poe_filter files."
+      ],
       "description": "Get current PoE2 categories, rarity and other supported filters.",
       "schema": {
         "type": "object",
@@ -6588,8 +7079,13 @@
       "server": "trade",
       "group": "runtime-discovered",
       "name": "get_trade_leagues",
-      "status": "not_audited",
-      "evidence": [],
+      "status": "partial_contract_verified",
+      "evidence": [
+        "2026-09-16 bounded PoE2 nonfilter audit, Forbidden Rites: Public trade2 leagues include exact Forbidden Rites and only poe2 realm results.",
+        "Private, gitignored MCP evidence: .local/logs/trade-nonfilter-audit-20260916/baseline-mcp.json (labels: trade_leagues). Full request/status/provenance index: .local/logs/trade-nonfilter-audit-20260916/coverage-reconciliation.json (tool get_trade_leagues).",
+        "Offline verification: poe-trade-mcp/tests/test_trade_economy_audit.py, tests/test_port.py and tests/test_transport.py: 50 passed. Broader poe-trade-mcp pytest tests: 131 passed, 0 failed/skipped, including synthetic filter/OAuth contracts with private temporary files; no real credentials or external auth calls. Summary: .local/logs/trade-nonfilter-audit-20260916/broader-pytest-summary.json.",
+        "Scope and remaining gaps: Read-only current discovery; no league guessing."
+      ],
       "description": "Get current official trade leagues for the poe2 realm.",
       "schema": {
         "type": "object",
@@ -6603,8 +7099,13 @@
       "server": "trade",
       "group": "runtime-discovered",
       "name": "get_economy_leagues",
-      "status": "not_audited",
-      "evidence": [],
+      "status": "partial_contract_verified",
+      "evidence": [
+        "2026-09-16 bounded PoE2 nonfilter audit, Forbidden Rites: Public PoE2 economy endpoint lists Forbidden Rites with URL and retrieval provenance.",
+        "Private, gitignored MCP evidence: .local/logs/trade-nonfilter-audit-20260916/baseline-mcp.json (labels: economy_leagues). Full request/status/provenance index: .local/logs/trade-nonfilter-audit-20260916/coverage-reconciliation.json (tool get_economy_leagues).",
+        "Offline verification: poe-trade-mcp/tests/test_trade_economy_audit.py, tests/test_port.py and tests/test_transport.py: 50 passed. Broader poe-trade-mcp pytest tests: 131 passed, 0 failed/skipped, including synthetic filter/OAuth contracts with private temporary files; no real credentials or external auth calls. Summary: .local/logs/trade-nonfilter-audit-20260916/broader-pytest-summary.json.",
+        "Scope and remaining gaps: Fetch time is not underlying data age."
+      ],
       "description": "List public PoE2 economy leagues without guessing a default.",
       "schema": {
         "type": "object",
@@ -6617,8 +7118,13 @@
       "server": "trade",
       "group": "runtime-discovered",
       "name": "get_economy_categories",
-      "status": "not_audited",
-      "evidence": [],
+      "status": "partial_contract_verified",
+      "evidence": [
+        "2026-09-16 bounded PoE2 nonfilter audit, Forbidden Rites: Cold MCP lists 14 exchange + 9 stash category names; plural UniqueAccessories works live.",
+        "Private, gitignored MCP evidence: .local/logs/trade-nonfilter-audit-20260916/baseline-mcp.json (labels: economy_categories). Full request/status/provenance index: .local/logs/trade-nonfilter-audit-20260916/coverage-reconciliation.json (tool get_economy_categories).",
+        "Offline verification: poe-trade-mcp/tests/test_trade_economy_audit.py, tests/test_port.py and tests/test_transport.py: 50 passed. Broader poe-trade-mcp pytest tests: 131 passed, 0 failed/skipped, including synthetic filter/OAuth contracts with private temporary files; no real credentials or external auth calls. Summary: .local/logs/trade-nonfilter-audit-20260916/broader-pytest-summary.json.",
+        "Scope and remaining gaps: Static supported-category catalog; not proof all 23 categories currently serve data."
+      ],
       "description": "List supported PoE2 public price categories and currency semantics.",
       "schema": {
         "type": "object",
@@ -6646,14 +7152,323 @@
         },
         "additionalProperties": false
       }
+    },
+    {
+      "server": "trade",
+      "name": "create_filter",
+      "source": "poe-trade-mcp/poe_filter.py",
+      "line": 247,
+      "description": "Create an actual PoE2 filter from validated blocks, with a final Show for unmatched drops. Explicit output path, no overwrite by default.",
+      "schema": {
+        "type": "object",
+        "properties": {
+          "output_path": {
+            "type": "string",
+            "description": "Explicit absolute .filter output path; never activates it"
+          },
+          "overwrite": {
+            "type": "boolean",
+            "default": false
+          },
+          "pob_directory": {
+            "type": "string",
+            "description": "Verified local PoB2 install or source directory; read only"
+          },
+          "blocks": {
+            "type": "array",
+            "maxItems": 1000,
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "output_path",
+          "blocks"
+        ],
+        "additionalProperties": false
+      },
+      "status": "partial_contract_verified",
+      "discovery": "13 filter tools verified by cold MCP; saved 46-tool aggregate schemas: .local/logs/trade-nonfilter-audit-20260916/verified-discovery.json",
+      "evidence": [
+        "2026-09-15/16 bounded filter audit: Existing aggregate-stdio test created, validated and previewed a real filter in a private temporary directory; explicit output path and no overwrite by default.",
+        "Scope and remaining gaps: Synthetic block/catalog contracts and private output only; no publication, game activation or client compiler verification.",
+        "Existing offline verification: 71 dedicated PoE2 filter tests passed in poe-trade-mcp/tests/test_poe2_filters.py; synthetic/native-shaped fixtures and private temporary artifacts. No tests or new MCP calls were run for this coverage update."
+      ]
+    },
+    {
+      "server": "trade",
+      "name": "generate_economy_filter",
+      "source": "poe-trade-mcp/poe_filter.py",
+      "line": 249,
+      "description": "Generate a static PoE2 filter from public reference prices. Keeps unknown prices visible; unique bases never hide cheaper/unknown variants.",
+      "schema": {
+        "type": "object",
+        "properties": {
+          "output_path": {
+            "type": "string",
+            "description": "Explicit absolute .filter output path; never activates it"
+          },
+          "overwrite": {
+            "type": "boolean",
+            "default": false
+          },
+          "pob_directory": {
+            "type": "string",
+            "description": "Verified local PoB2 install or source directory; read only"
+          },
+          "league": {
+            "type": "string",
+            "minLength": 1
+          },
+          "categories": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 5,
+            "uniqueItems": true,
+            "items": {
+              "enum": [
+                "Currency",
+                "Fragments",
+                "Abyss",
+                "UncutGems",
+                "LineageSupportGems",
+                "Essences",
+                "SoulCores",
+                "Idols",
+                "Runes",
+                "Ritual",
+                "Expedition",
+                "Delirium",
+                "Breach",
+                "Verisium",
+                "UniqueWeapons",
+                "UniqueArmours",
+                "UniqueAccessories",
+                "UniqueFlasks",
+                "UniqueCharms",
+                "UniqueJewels",
+                "UniqueSanctumRelics",
+                "UniqueTablets",
+                "PrecursorTablets"
+              ]
+            }
+          },
+          "currency": {
+            "enum": [
+              "chaos",
+              "divine",
+              "exalted"
+            ]
+          },
+          "min_value": {
+            "type": "number",
+            "exclusiveMinimum": 0
+          },
+          "high_value": {
+            "type": "number",
+            "exclusiveMinimum": 0
+          },
+          "hide_below": {
+            "type": "boolean",
+            "default": false
+          },
+          "blocks": {
+            "type": "array",
+            "maxItems": 1000,
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "output_path",
+          "league"
+        ],
+        "additionalProperties": false
+      },
+      "status": "partial_contract_verified",
+      "discovery": "13 filter tools verified by cold MCP; saved 46-tool aggregate schemas: .local/logs/trade-nonfilter-audit-20260916/verified-discovery.json",
+      "evidence": [
+        "2026-09-15/16 bounded filter audit: Generated actual private artifact /tmp/poe2-filter-review-6i1fojt_/PoE2-verified-economy.filter: 13032 bytes, 59 blocks, 53 public Forbidden Rites currency reference groups. Provenance and preview/validation: /tmp/poe2-filter-review-6i1fojt_/verification.json.",
+        "Scope and remaining gaps: Static reference values are not executable prices or exhaustive market coverage. Unknown/unpriced items and unsafe unique-base variants stay visible; no user filter replacement or game activation.",
+        "Existing offline verification: 71 dedicated PoE2 filter tests passed in poe-trade-mcp/tests/test_poe2_filters.py; synthetic/native-shaped fixtures and private temporary artifacts. No tests or new MCP calls were run for this coverage update."
+      ]
+    },
+    {
+      "server": "trade",
+      "name": "get_filter_catalog",
+      "source": "poe-trade-mcp/poe_filter.py",
+      "line": 241,
+      "description": "Discover real PoE2 filter classes and local native base definitions. No PoE1 crafting-base fallback or drop/value assumptions.",
+      "schema": {
+        "type": "object",
+        "properties": {
+          "pob_directory": {
+            "type": "string",
+            "description": "Verified local PoB2 install or source directory; read only"
+          },
+          "query": {
+            "type": "string"
+          },
+          "item_class": {
+            "type": "string"
+          },
+          "include_bases": {
+            "type": "boolean",
+            "default": true
+          },
+          "include_hidden": {
+            "type": "boolean",
+            "default": false
+          },
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 500
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      },
+      "status": "partial_contract_verified",
+      "discovery": "13 filter tools verified by cold MCP; saved 46-tool aggregate schemas: .local/logs/trade-nonfilter-audit-20260916/verified-discovery.json",
+      "evidence": [
+        "2026-09-16 MSK actual-filter read-only audit: Resolved PoE2 classes and native base catalog (0 bases in the audited source); no PoE1 crafting-base fallback.",
+        "Private MCP evidence: /tmp/poe2-filter-compat-ipg1bz7b/after-fix.json (calls.catalog); all 13 tools discovered, seven read-only tools exercised on the working copy. Before/after filter SHA-256: 074f603d0b4476e9a433e3a06d45ce988c604b27780cc680360df7a1ab772b17.",
+        "Scope: mutation tools were not run on the working copy. Validation/catalog/preview are bounded source models; accepted compatibility syntax and unresolved names remain warnings. No publication or game loading.",
+        "Existing offline verification: 71 dedicated PoE2 filter tests passed in poe-trade-mcp/tests/test_poe2_filters.py; synthetic/native-shaped fixtures and private temporary artifacts. No tests or new MCP calls were run for this coverage update."
+      ]
+    },
+    {
+      "server": "trade",
+      "name": "reload_filter",
+      "source": "poe-trade-mcp/poe_filter.py",
+      "line": 240,
+      "description": "Re-read the local file; does not reload or alter the game client.",
+      "schema": {
+        "type": "object",
+        "properties": {
+          "filter_path": {
+            "type": "string",
+            "description": "Absolute local .filter path; POE_FILTER_PATH may configure the default"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      },
+      "status": "partial_contract_verified",
+      "discovery": "13 filter tools verified by cold MCP; saved 46-tool aggregate schemas: .local/logs/trade-nonfilter-audit-20260916/verified-discovery.json",
+      "evidence": [
+        "2026-09-16 MSK actual-filter read-only audit: Re-read the actual working copy from disk; does not reload or mutate the game client.",
+        "Private MCP evidence: /tmp/poe2-filter-compat-ipg1bz7b/after-fix.json (calls.reload); all 13 tools discovered, seven read-only tools exercised on the working copy. Before/after filter SHA-256: 074f603d0b4476e9a433e3a06d45ce988c604b27780cc680360df7a1ab772b17.",
+        "Scope: mutation tools were not run on the working copy. Validation/catalog/preview are bounded source models; accepted compatibility syntax and unresolved names remain warnings. No publication or game loading.",
+        "Existing offline verification: 71 dedicated PoE2 filter tests passed in poe-trade-mcp/tests/test_poe2_filters.py; synthetic/native-shaped fixtures and private temporary artifacts. No tests or new MCP calls were run for this coverage update."
+      ]
+    },
+    {
+      "server": "trade",
+      "name": "test_filter",
+      "source": "poe-trade-mcp/poe_filter.py",
+      "line": 245,
+      "description": "Preview ordered rules and Continue on supplied item fields; missing fields/imports remain unknown.",
+      "schema": {
+        "type": "object",
+        "properties": {
+          "filter_path": {
+            "type": "string",
+            "description": "Absolute local .filter path; POE_FILTER_PATH may configure the default"
+          },
+          "text": {
+            "type": "string"
+          },
+          "items": {
+            "type": "array",
+            "maxItems": 200,
+            "items": {
+              "type": "object"
+            }
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "additionalProperties": false,
+        "oneOf": [
+          {
+            "required": [
+              "text"
+            ]
+          },
+          {
+            "required": [
+              "filter_path"
+            ]
+          }
+        ]
+      },
+      "status": "partial_contract_verified",
+      "discovery": "13 filter tools verified by cold MCP; saved 46-tool aggregate schemas: .local/logs/trade-nonfilter-audit-20260916/verified-discovery.json",
+      "evidence": [
+        "2026-09-16 MSK actual-filter read-only audit: Six supplied scenarios against the actual file: Divine/Mirror Show, Gold Hide, rare Warmace/normal Vile Robe Show, incomplete item unknown. Assumed item fields, not observed drops; missing conditions are not forced to pass.",
+        "Private MCP evidence: /tmp/poe2-filter-compat-ipg1bz7b/after-fix.json (calls.preview); all 13 tools discovered, seven read-only tools exercised on the working copy. Before/after filter SHA-256: 074f603d0b4476e9a433e3a06d45ce988c604b27780cc680360df7a1ab772b17.",
+        "Scope: mutation tools were not run on the working copy. Validation/catalog/preview are bounded source models; accepted compatibility syntax and unresolved names remain warnings. No publication or game loading.",
+        "Existing offline verification: 71 dedicated PoE2 filter tests passed in poe-trade-mcp/tests/test_poe2_filters.py; synthetic/native-shaped fixtures and private temporary artifacts. No tests or new MCP calls were run for this coverage update."
+      ]
+    },
+    {
+      "server": "trade",
+      "name": "validate_filter",
+      "source": "poe-trade-mcp/poe_filter.py",
+      "line": 244,
+      "description": "Check PoE2 syntax and optional native equipment base identities. This is not the game-client compiler.",
+      "schema": {
+        "type": "object",
+        "properties": {
+          "filter_path": {
+            "type": "string",
+            "description": "Absolute local .filter path; POE_FILTER_PATH may configure the default"
+          },
+          "text": {
+            "type": "string"
+          },
+          "pob_directory": {
+            "type": "string",
+            "description": "Verified local PoB2 install or source directory; read only"
+          }
+        },
+        "required": [],
+        "additionalProperties": false,
+        "oneOf": [
+          {
+            "required": [
+              "text"
+            ]
+          },
+          {
+            "required": [
+              "filter_path"
+            ]
+          }
+        ]
+      },
+      "status": "partial_contract_verified",
+      "discovery": "13 filter tools verified by cold MCP; saved 46-tool aggregate schemas: .local/logs/trade-nonfilter-audit-20260916/verified-discovery.json",
+      "evidence": [
+        "2026-09-16 MSK actual-filter read-only audit: Actual complex working copy validates with zero syntax errors. AnyEnchantment, observed named alert/drop-sound compatibility and Class/BaseType alternatives no longer create false errors. Catalog gaps and compatibility warnings remain explicit; not the game-client compiler.",
+        "Private MCP evidence: /tmp/poe2-filter-compat-ipg1bz7b/after-fix.json (calls.native_validation); all 13 tools discovered, seven read-only tools exercised on the working copy. Before/after filter SHA-256: 074f603d0b4476e9a433e3a06d45ce988c604b27780cc680360df7a1ab772b17.",
+        "Scope: mutation tools were not run on the working copy. Validation/catalog/preview are bounded source models; accepted compatibility syntax and unresolved names remain warnings. No publication or game loading.",
+        "Existing offline verification: 71 dedicated PoE2 filter tests passed in poe-trade-mcp/tests/test_poe2_filters.py; synthetic/native-shaped fixtures and private temporary artifacts. No tests or new MCP calls were run for this coverage update."
+      ]
     }
   ],
-  "updated_at": "2026-09-15T20:03:09.853340+00:00",
+  "updated_at": "2026-09-16",
   "discovery_counts": {
     "pob_trade_disabled": 127,
     "pob_source_schemas": 136,
-    "trade": 40,
-    "data": 26
+    "trade": 46,
+    "data": 26,
+    "pob_live_trade_enabled": 136
   },
   "completion": "incomplete; discovery, unit tests and selected live calls are separate evidence",
   "verification_checkpoint": {
@@ -6672,6 +7487,12 @@
     "ordinary_market_mcp": "8 checks passed including currencies, source metadata, ordinary listing search/fetch/comparison and invalid PoE1 filter",
     "weighted_search": "Anonymous 1/2-weight queries rejected by source complexity limit; same-stat AND control succeeded; authenticated success unverified",
     "core_trade_configuration": "Enabled in project and template; current desktop tool catalog reload still unverified",
-    "checkpoint3_clean_clone": "0f250bf remote checkout; core01ac3b3,API722f09a; npm ci,TypeScriptbuild,1251TS+54skip,121root+54data+74tradePythonpassed; pipcheckpassed"
+    "checkpoint3_clean_clone": "0f250bf remote checkout; core01ac3b3,API722f09a; npm ci,TypeScriptbuild,1251TS+54skip,121root+54data+74tradePythonpassed; pipcheckpassed",
+    "checkpoint4_local": "TypeScriptbuildPASS;1396coretestsPASS/60skip;294rootPythonPASS/10skip with explicit stock source;73dataPASS;131tradePASS. Clean remote reproduction pending.",
+    "api14_native_items": "6 actual native scenarios passed with full state preservation, including item-granted Choir19-to20 support/selection projection. Unknown Archon modifier rejected with unchanged live state.",
+    "api14_native_tree": "56 actual native calculations across4 MCP cases; both weapon sets and exact full state preserved.",
+    "api14_current_resources": "Fresh public snapshot PvB25 confirmed native/source: Ward146/CD2.838; withoutCDRII113/CD3.465. Snapshot and original disposable runtime state preserved. Ward regeneration output only available from source model.",
+    "api14_stock_parser": "Complete Ward item grammar includes specific Armour/Evasion/ES mapping; generic Defences preserved. Native bodyWard557 vs old548, playerWard557 vs old712; six dependent computed fields changed, all configuration inputs preserved.",
+    "live_tool_catalog": "Three actual configured STDIO catalogs:136core/26data/46trade. Current desktop context still does not expose these tools."
   }
 }

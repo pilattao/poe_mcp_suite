@@ -1,0 +1,116 @@
+--- a/Modules/CalcOffence.lua
++++ b/Modules/CalcOffence.lua
+@@ -2040,17 +2040,20 @@
+ 
+ 	-- Calculate costs (may be slightly off due to rounding differences)
+ 	local costs = {
+-		order = { "Mana","Life","ES","Soul","Rage","ManaPercent","LifePercent","ManaPerMinute","LifePerMinute","ManaPercentPerMinute","LifePercentPerMinute","ESPerMinute","ESPercentPerMinute" },
++		order = { "Mana","Life","ES","Ward","Soul","Rage","ManaPercent","LifePercent","WardPercent","ManaPerMinute","LifePerMinute","WardPerMinute","ManaPercentPerMinute","LifePercentPerMinute","ESPerMinute","ESPercentPerMinute" },
+ 		
+ 		["Mana"] = { type = "Mana", upfront = true, percent = false, text = "mana", baseCost = 0, baseCostRaw = 0, totalCost = 0, baseCostNoMult = 0, finalBaseCost = 0 },
+ 		["Life"] = { type = "Life", upfront = true, percent = false, text = "life", baseCost = 0, totalCost = 0, baseCostNoMult = 0, finalBaseCost = 0 },
+ 		["ES"] = { type = "ES", upfront = true, percent = false, text = "ES", baseCost = 0, totalCost = 0, baseCostNoMult = 0, finalBaseCost = 0 },
++		["Ward"] = { type = "Ward", upfront = true, percent = false, text = "runic ward", baseCost = 0, totalCost = 0, baseCostNoMult = 0, finalBaseCost = 0 },
+ 		["Soul"] = { type = "Soul", upfront = true, percent = false, unaffectedByGenericCostMults = true, text = "soul", baseCost = 0, totalCost = 0, baseCostNoMult = 0, finalBaseCost = 0 },
+ 		["Rage"] = { type = "Rage", upfront = true, percent = false, text = "rage", baseCost = 0, totalCost = 0, baseCostNoMult = 0, finalBaseCost = 0 },
+ 		["ManaPercent"] = { type = "Mana", upfront = true, percent = true, text = "mana", baseCost = 0, totalCost = 0, baseCostNoMult = 0, finalBaseCost = 0 },
+ 		["LifePercent"] = { type = "Life", upfront = true, percent = true, text = "life", baseCost = 0, totalCost = 0, baseCostNoMult = 0, finalBaseCost = 0 },
++		["WardPercent"] = { type = "Ward", upfront = true, percent = true, text = "runic ward", baseCost = 0, totalCost = 0, baseCostNoMult = 0, finalBaseCost = 0 },
+ 		["ManaPerMinute"] = { type = "Mana", upfront = false, percent = false, text = "mana/s", baseCost = 0, totalCost = 0, baseCostNoMult = 0, finalBaseCost = 0 },
+ 		["LifePerMinute"] = { type = "Life", upfront = false, percent = false, text = "life/s", baseCost = 0, totalCost = 0, baseCostNoMult = 0, finalBaseCost = 0 },
++		["WardPerMinute"] = { type = "Ward", upfront = false, percent = false, text = "runic ward/s", baseCost = 0, totalCost = 0, baseCostNoMult = 0, finalBaseCost = 0 },
+ 		["ManaPercentPerMinute"] = { type = "Mana", upfront = false, percent = true, text = "mana/s", baseCost = 0, totalCost = 0, baseCostNoMult = 0, finalBaseCost = 0 },
+ 		["LifePercentPerMinute"] = { type = "Life", upfront = false, percent = true, text = "life/s", baseCost = 0, totalCost = 0, baseCostNoMult = 0, finalBaseCost = 0 },
+ 		["ESPerMinute"] = { type = "ES", upfront = false, percent = false, text = "ES/s", baseCost = 0, totalCost = 0, baseCostNoMult = 0, finalBaseCost = 0 },
+@@ -2064,6 +2067,8 @@
+ 		local additionalLifeCost = skillModList:Sum("BASE", skillCfg, "BaseManaCostAsLifeCost") / 100 -- Extra cost (e.g. Petrified Blood) calculations
+ 		local additionalESCost = skillModList:Sum("BASE", skillCfg, "ManaCostAsEnergyShieldCost") / 100 -- Extra cost (e.g. Replica Covenant) calculations
+ 		local hybridLifeCost = m_min(skillModList:Sum("BASE", skillCfg, "HybridManaAndLifeCost_Life"), 100) / 100 -- Blood Magic, Lifetap and tree mods capped at 100
++		local wardCostPctOfLife = skillModList:Sum("BASE", skillCfg, "WardCostAsPercentOfLifeCost") / 100 -- Extra cost (e.g. Scouring Flame) calculations
++		local wardCostPctOfMana = skillModList:Sum("BASE", skillCfg, "WardCostAsPercentOfManaCost") / 100
+ 		for _, resource in ipairs(costs.order) do
+ 			local val = costs[resource]
+ 			local skillCost = skillModList:Override(skillCfg, "Base"..resource.."CostOverride") or activeSkill.activeEffect.grantedEffectLevel.cost and activeSkill.activeEffect.grantedEffectLevel.cost[resource] or nil
+@@ -2106,6 +2111,18 @@
+ 				if additionalESCost > 0 then
+ 					val.baseCost = costs[manaType].baseCost
+ 					val.finalBaseCost = round(finalBaseCostRaw + round(costs[manaType].finalBaseCost * additionalESCost))
++				end
++			elseif val.type == "Ward" and resource == "Ward" then
++				local wardCostFromOtherCosts = 0
++				if wardCostPctOfMana ~= 0 then
++					wardCostFromOtherCosts = wardCostFromOtherCosts + round(costs["Mana"].finalBaseCost * wardCostPctOfMana)
++				end
++				if wardCostPctOfLife ~= 0 then
++					wardCostFromOtherCosts = wardCostFromOtherCosts + round(costs["Life"].finalBaseCost * wardCostPctOfLife)
++				end
++				if wardCostFromOtherCosts > 0 then
++					val.baseCost = val.baseCost + wardCostFromOtherCosts
++					val.finalBaseCost = val.finalBaseCost + wardCostFromOtherCosts
+ 				end
+ 			elseif val.type == "Rage" then
+ 				if skillModList:Flag(skillCfg, "CostRageInsteadOfSouls") then -- Hateforge
+@@ -2153,6 +2170,10 @@
+ 				end
+ 				-- Apply cost efficiency (similar to reservation efficiency)
+ 				output[costName] = m_max(0, output[costName] / costEfficiency)
++				-- Ward follows native upfront-cost rounding; preserve stock rounding for other resources.
++				if val.type == "Ward" and val.upfront and not val.percent then
++					output[costName] = round(output[costName])
++				end
+ 				output[costName] = m_max(0, output[costName] + val.totalCost)
+ 				if val.type == "Mana" and hybridLifeCost > 0 then -- Life/Mana Mastery
+ 					output[costName] = m_max(0, m_floor((1 - hybridLifeCost) * output[costName]))
+@@ -2166,6 +2187,10 @@
+ 				output[costName] = m_max(0, moreType * output[costName])
+ 				-- Apply cost efficiency for unaffected costs too
+ 				output[costName] = m_max(0, output[costName] / costEfficiency)
++				-- Ward follows native upfront-cost rounding; preserve stock rounding for other resources.
++				if val.type == "Ward" and val.upfront and not val.percent then
++					output[costName] = round(output[costName])
++				end
+ 				output[costName] = m_max(0, output[costName] + val.totalCost)
+ 				output[costNameRaw] = val.baseCostRaw and m_max(0, m_max(0, (1 + inc / 100) * (val.baseCostRaw + val.baseCostNoMult) * moreType / costEfficiency) + val.totalCost)
+ 			end
+--- a/Modules/Calcs.lua
++++ b/Modules/Calcs.lua
+@@ -528,7 +528,7 @@
+ 			end
+ 			if GlobalCache.cachedData[mode][uuid] and (not skill.triggeredBy or skill.triggeredBy.grantedEffect.id ~= "SupportBlasphemyPlayer") then
+ 				output.EnergyShieldProtectsMana = env.modDB:Flag(nil, "EnergyShieldProtectsMana")
+-				for pool, costResource in pairs({["LifeUnreserved"] = "LifeCost", ["ManaUnreserved"] = "ManaCost", ["Rage"] = "RageCost", ["EnergyShield"] = "ESCost"}) do
++				for pool, costResource in pairs({["LifeUnreserved"] = "LifeCost", ["ManaUnreserved"] = "ManaCost", ["Rage"] = "RageCost", ["Ward"] = "WardCost", ["EnergyShield"] = "ESCost"}) do
+ 					local cachedCost = GlobalCache.cachedData[mode][uuid].Env.player.output[costResource]
+ 					if cachedCost then
+ 						local totalPool = (output.EnergyShieldProtectsMana and costResource == "ManaCost" and output["EnergyShield"] or 0) + (output[pool] or 0)
+--- a/Modules/ModParser.lua
++++ b/Modules/ModParser.lua
+@@ -208,6 +208,7 @@
+ 	["life cost efficiency of skills"] = "LifeCostEfficiency",
+ 	["spirit cost efficiency"] = "SpiritCostEfficiency",
+ 	["spirit cost efficiency of skills"] = "SpiritCostEfficiency",
++	["runic ward cost efficiency"] = "WardCostEfficiency",
+ 	["energy shield cost efficiency"] = "ESCostEfficiency",
+ 	["energy shield cost efficiency of skills"] = "ESCostEfficiency",
+ 	["es cost efficiency"] = "ESCostEfficiency",
+@@ -1600,6 +1601,7 @@
+ 	["per (%d+) of maximum life or maximum mana, whichever is lower"] = function(num) return { tag = { type = "PerStat", stat = "LowestOfMaximumLifeAndMaximumMana", div = num } } end,
+ 	["per (%d+) player maximum life"] = function(num) return { tag = { type = "PerStat", stat = "Life", div = num, actor = "parent" } } end,
+ 	["per (%d+) life cost"] = function(num) return { tag = { type = "PerStat", stat = "LifeCost", div = num}} end,
++	["per (%d+) runic ward cost"] = function(num) return { tag = { type = "PerStat", stat = "WardCost", div = num}} end,
+ 	["per (%d+) maximum mana"] = function(num) return { tag = { type = "PerStat", stat = "Mana", div = num } } end,
+ 	["per (%d+) maximum mana, up to (%d+)%%"] = function(num, _, limit) return { tag = { type = "PerStat", stat = "Mana", div = num, limit = tonumber(limit), limitTotal = true } } end,
+ 	["per (%d+) maximum mana, up to a maximum of (%d+)%%"] = function(num, _, limit) return { tag = { type = "PerStat", stat = "Mana", div = num, limit = tonumber(limit), limitTotal = true } } end,
+--- a/Data/SkillStatMap.lua
++++ b/Data/SkillStatMap.lua
+@@ -1789,6 +1789,10 @@
+ ["gain_energy_shield_cost_equal_to_intelligence"] = {
+ 	mod("ESCostNoMult", "BASE", nil, 0, 0, { type = "PercentStat", stat = "Int", percent = 100 }),
+ },
++["base_skill_ward_cost_as_%_of_life_and_mana_cost"] = {
++	mod("WardCostAsPercentOfManaCost", "BASE", nil),
++	mod("WardCostAsPercentOfLifeCost", "BASE", nil),
++},
+ -- Projectiles
+ ["skill_can_fire_arrows"] = {
+ 	skillFlag = "arrow",

@@ -14,7 +14,7 @@ def installation(tmp_path):
     original = b"main = {}\nfunction main:Init()\n  self.ready = true\nend\n\nfunction main:DetectUnicodeSupport()\nend\n"
     (install / "Modules/Main.lua").write_bytes(original)
     (install / "Path of Building-PoE2.exe").write_bytes(b"fixture")
-    for name in ["BuildOps.lua", "Handlers.lua", "TcpServer.lua", "Server.lua", "GemEvaluator.lua"]:
+    for name in ["BuildOps.lua", "Handlers.lua", "TcpServer.lua", "Server.lua", "GemEvaluator.lua", "ItemEvaluator.lua", "TreeEvaluator.lua", "XmlSemantics.lua"]:
         (source / name).write_text("return {}\n")
     return install, source, original
 
@@ -28,11 +28,11 @@ def load_installer():
 def test_install_is_idempotent_and_uninstall_restores_exact_original(installation):
     install, source, original = installation
     api = load_installer()
-    api.install_api(install, source)
+    api.install_api(install, source, calculator_patches=[])
     first = (install / "Modules/Main.lua").read_bytes()
     assert b"poe2-mcp API begin" in first
     assert first.count(b"poe2-mcp API begin") == 1
-    api.install_api(install, source)
+    api.install_api(install, source, calculator_patches=[])
     assert (install / "Modules/Main.lua").read_bytes() == first
     api.uninstall_api(install)
     assert (install / "Modules/Main.lua").read_bytes() == original
@@ -41,10 +41,10 @@ def test_install_is_idempotent_and_uninstall_restores_exact_original(installatio
 def test_update_creates_a_new_original_backup(installation):
     install, source, original = installation
     api = load_installer()
-    api.install_api(install, source)
+    api.install_api(install, source, calculator_patches=[])
     updated = original.replace(b"self.ready = true", b"self.ready = 'updated'")
     (install / "Modules/Main.lua").write_bytes(updated)
-    api.install_api(install, source)
+    api.install_api(install, source, calculator_patches=[])
     api.uninstall_api(install)
     assert (install / "Modules/Main.lua").read_bytes() == updated
 
@@ -54,14 +54,14 @@ def test_incompatible_install_does_not_copy_or_patch_anything(installation):
     (install / "Modules/Main.lua").write_bytes(bad)
     api = load_installer()
     with pytest.raises(ValueError):
-        api.install_api(install, source)
+        api.install_api(install, source, calculator_patches=[])
     assert (install / "Modules/Main.lua").read_bytes() == bad
     assert not (install / "API").exists()
 
 def test_uninstall_preserves_later_user_edits_instead_of_overwriting_them(installation):
     install, source, _ = installation
     api = load_installer()
-    api.install_api(install, source)
+    api.install_api(install, source, calculator_patches=[])
     modified = (install / "Modules/Main.lua").read_bytes() + b"\n-- user edit\n"
     (install / "Modules/Main.lua").write_bytes(modified)
     with pytest.raises(ValueError):
@@ -73,7 +73,7 @@ def test_missing_source_leaves_original_untouched(installation):
     api = load_installer()
     (source / "Handlers.lua").unlink()
     with pytest.raises((ValueError, FileNotFoundError)):
-        api.install_api(install, source)
+        api.install_api(install, source, calculator_patches=[])
     assert (install / "Modules/Main.lua").read_bytes() == original
     assert not (install / "API").exists()
 
@@ -82,7 +82,7 @@ def test_native_gem_evaluator_is_installed_verified_and_removed(installation):
     api = load_installer()
     content = b"-- native evaluator fixture\nreturn {evaluate=function() return true end}\n"
     (source / "GemEvaluator.lua").write_bytes(content)
-    api.install_api(install, source)
+    api.install_api(install, source, calculator_patches=[])
     assert (install / "API/GemEvaluator.lua").read_bytes() == content
     state = api.read_state(install)
     assert state["files"]["GemEvaluator.lua"] == api.sha(content)

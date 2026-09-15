@@ -10,7 +10,7 @@ def test_nonblocking_partial_writes_keep_every_byte_in_order():
       received=''; sends=0; reads=0; accepted=false
       ConPrintf=function() end
       package.preload.dkjson=function() return {
-        encode=function(v) if v.ready then assert(v.version.apiVersion=='1.3.0') end;return v.ready and 'ready' or v.message end,
+        encode=function(v) if v.ready then assert(v.version.apiVersion=='1.4.0') end;return v.ready and 'ready' or v.message end,
         decode=function(line) return {action=line} end
       } end
       client={settimeout=function() end,close=function() closed=true end}

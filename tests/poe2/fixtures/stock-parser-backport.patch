@@ -1,0 +1,28 @@
+--- a/Modules/ModParser.lua
++++ b/Modules/ModParser.lua
+@@ -244,6 +244,8 @@
+ 	["evasion rating"] = "Evasion",
+ 	["energy shield"] = "EnergyShield",
+ 	["ward"] = "Ward",
++	["runic ward"] = "Ward",
++	["maximum runic ward"] = "Ward",
+ 	["armour and evasion"] = "ArmourAndEvasion",
+ 	["armour and evasion rating"] = "ArmourAndEvasion",
+ 	["evasion rating and armour"] = "ArmourAndEvasion",
+@@ -251,7 +253,7 @@
+ 	["evasion rating and energy shield"] = "EvasionAndEnergyShield",
+ 	["global evasion rating and energy shield"] = { "Evasion", "EnergyShield" },
+ 	["evasion and energy shield"] = "EvasionAndEnergyShield",
+-	["armour, evasion and energy shield"] = "Defences",
++	["armour, evasion and energy shield"] = { "Armour", "Evasion", "EnergyShield" },
+ 	["defences"] = "Defences",
+ 	["to evade"] = "EvadeChance",
+ 	["chance to evade"] = "EvadeChance",
+@@ -6297,6 +6299,7 @@
+ 	["converted to chaos damage"] = "ConvertToChaos",
+ 	["added as energy shield"] = "GainAsEnergyShield",
+ 	["as extra maximum energy shield"] = "GainAsEnergyShield",
++	["as extra maximum runic ward"] = "GainAsWard",
+ 	["converted to energy shield"] = "ConvertToEnergyShield",
+ 	["as armour"] = "GainAsArmour",
+ 	["as extra armour"] = "GainAsArmour",

@@ -2,7 +2,34 @@
 
 This branch is an active port of the upstream suite. Full restoration is not yet
 verified. A successful tools/list call is not evidence that every tool works.
-See [scope](PORT_SCOPE.md), [plan](PLAN.md) and [tool coverage](tool-coverage.json).
+See [setup](SETUP.md), [scope](PORT_SCOPE.md), [plan](PLAN.md) and [tool coverage](tool-coverage.json).
+
+## Checkpoint 4: native calculations and local workflows
+
+The current working checkout passes the TypeScript build and 1,396 core tests
+(60 skipped), 294 API/installer/source Python tests (10 skipped with an explicit
+stock installation), 73 data tests and 131 trade/filter tests. These counts
+include unit and isolated-engine checks, not live verification of every tool.
+
+Native API 1.4 adds detached item and passive-tree comparisons. Actual running
+PoB2 checks cover both weapon sets, bounded tree search, same-item replacement,
+combined equipment changes and an item-granted skill level upgrade while
+preserving its supports and selected group. Each comparison keeps the original
+XML, statistics, configuration, selections and undo state unchanged. Known
+unmodeled item modifiers still reject numerical comparisons.
+
+The reversible installer also supplies the [complete stock Ward parser
+backport](stock-parser-backport.md). Named Armour/Evasion/Energy Shield bonuses
+no longer accidentally increase Ward. Updating that model legitimately changes
+Ward and dependent calculated defenses; this differs from preserving state
+within a single comparison.
+
+Directional PoE2 exchange quotes, local filter editing/validation, file exports,
+watchers, data provenance and external-source error reporting now have bounded
+verification. Live configured catalogs contain 136 core, 26 data and 46 trade
+server tools. OAuth/protected data, anonymous weighted searches, some external
+sites, full encounter modeling and the current desktop tool-catalog refresh
+remain incomplete or unverified. See the per-tool inventory for their limits.
 
 ## Runtime and configuration
 

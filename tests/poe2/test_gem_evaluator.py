@@ -316,5 +316,88 @@ def test_api_13_advertises_native_gem_evaluation(evaluator):
     lua.execute("package.loaded['API.BuildOps']=fixtureApi;package.preload.dkjson=function()return {}end")
     handlers=lua.execute((ROOT/'PathOfBuilding/src/API/Handlers.lua').read_text())
     version=handlers['handlers']['version'](lua.eval('{}'))['version']
-    assert version['apiVersion']=='1.3.0'
+    assert version['apiVersion']=='1.4.0'
     assert version['features']['nativeGemEvaluation'] is True
+
+
+def test_resource_outputs_use_native_names_and_separate_base_from_modified_cost(evaluator):
+    lua,api=evaluator
+    lua.execute('''
+      data.skills.activePlayer.levels[18].cost={Ward=134}
+      data.skills.activePlayer.levels[18].cooldown=5.3
+      baseCalc=build.calcsTab.calcs.buildOutput
+      build.calcsTab.calcs.buildOutput=function(b,mode)
+        local env=baseCalc(b,mode)
+        env.player.output.Ward=700;env.player.output.WardCost=81
+        env.player.output.WardPerSecondCost=16.2;env.player.output.ManaPerSecondCost=20
+        env.player.output.LifePerSecondCost=5;env.player.output.Cooldown=5
+        return env
+      end
+    ''')
+    result=call(evaluator,"{groupIndex=1,setups={{name='Resources',gems={{refIndex=1},{refIndex=2}}}}}")
+    row=result['setups'][1]
+    assert row['output']['WardCost']==81
+    assert row['output']['WardPerSecondCost']==16.2
+    assert row['output']['ManaPerSecondCost']==20
+    assert row['output']['LifePerSecondCost']==5
+    assert row['output']['Cooldown']==5
+    assert row['gems'][1]['baseCosts']['Ward']==134
+    assert row['gems'][1]['baseCooldown']==5.3
+
+
+def test_missing_native_ward_model_is_reported_instead_of_zero_or_a_valid_recommendation(evaluator):
+    lua,api=evaluator
+    lua.execute('data.skills.activePlayer.levels[18].cost={Ward=134}')
+    result=call(evaluator,"{groupIndex=1,setups={{name='Missing Ward model',gems={{refIndex=1},{refIndex=2}}}}}")
+    row=result['setups'][1]
+    assert row['output']['WardCost'] is None
+    assert any('WardCost' in note for _,note in row['resourceNotes'].items())
+    assert row['valid'] is False
+
+
+def test_native_ward_affordability_warning_prevents_ranking(evaluator):
+    lua,api=evaluator
+    lua.execute('''
+      baseCalc=build.calcsTab.calcs.buildOutput
+      build.calcsTab.calcs.buildOutput=function(b,mode)
+        local env=baseCalc(b,mode);env.player.output.WardCostWarning=true;return env
+      end
+    ''')
+    result=call(evaluator,"{groupIndex=1,setups={{name='Cannot afford',gems={{refIndex=1},{refIndex=2}}}}}")
+    assert result['setups'][1]['valid'] is False
+    assert 'WardCostWarning' in list(result['setups'][1]['warnings'].values())
+
+
+def test_resource_only_mode_does_not_require_or_invent_dps(evaluator):
+    lua,api=evaluator
+    lua.execute('''
+      baseCalc=build.calcsTab.calcs.buildOutput
+      build.calcsTab.calcs.buildOutput=function(b,mode)
+        local env=baseCalc(b,mode)
+        env.player.output.CombinedDPS=nil;env.player.output.TotalDPS=nil
+        env.player.output.Cooldown=5;env.player.output.WardCost=81
+        return env
+      end
+    ''')
+    result=call(evaluator,"{groupIndex=1,resourceOnly=true,setups={{name='Utility',gems={{refIndex=1},{refIndex=2}}}}}")
+    assert result['metric']=='resource-only'
+    assert result['setups'][1]['output']['CombinedDPS'] is None
+    assert result['setups'][1]['output']['WardCost']==81
+    assert result['setups'][1]['output']['Cooldown']==5
+    assert len(result['ranking'])==0
+
+
+def test_native_cost_waiver_is_distinct_from_a_missing_ward_model(evaluator):
+    lua,api=evaluator
+    lua.execute('''
+      data.skills.activePlayer.levels[18].cost={Ward=134}
+      baseCalc=build.calcsTab.calcs.buildOutput
+      build.calcsTab.calcs.buildOutput=function(b,mode)
+        local env=baseCalc(b,mode)
+        env.player.mainSkill.skillModList={Flag=function(_,_,name)return name=='HasNoCost'end}
+        return env
+      end
+    ''')
+    result=call(evaluator,"{groupIndex=1,resourceOnly=true,setups={{name='Waived',gems={{refIndex=1},{refIndex=2}}}}}")
+    assert result['setups'][1]['valid'] is True
+    assert 'HasNoCost' in result['setups'][1]['resourceNotes'][1]

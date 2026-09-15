@@ -11,6 +11,8 @@ from pathlib import Path
 
 import pytest
 from lupa.luajit21 import LuaRuntime
+from test_tree_evaluator import (native as tree_native, call as tree_call,
+    rejected as tree_rejected, path_request as tree_path, assert_unchanged as tree_unchanged)
 
 ROOT = Path(__file__).resolve().parents[2]
 SOURCE = ROOT / "PathOfBuilding/src/API/BuildOps.lua"
@@ -315,15 +317,25 @@ def test_spectre_assignment_sets_real_per_gem_selection(backend):
     assert lua.eval('build.skillsTab.socketGroupList[1].gemList[1].skillMinion') == 'monster'
 
 
-def test_calc_with_honours_full_dps_and_restores_view_on_error(backend):
-    lua,api=backend
-    lua.execute('''
-      build.spec.nodes={[1]={id=1}};build.spec.allocNodes={}
-      build.calcsTab.GetMiscCalculator=function() return function(override, full)
-        assert(full==true,'Full DPS option was discarded'); error('requested full calculation') end, {} end
-    ''')
-    assert 'requested full calculation' in rejected(api.calc_with(lua.eval('{addNodes={1},useFullDPS=true}')))
-    assert lua.eval('build.viewMode') == 'TREE'
+def test_calc_with_honours_full_dps_and_restores_view_on_error(tree_native):
+    lua, api = tree_native
+    group = api.create_socket_group(lua.eval('{label="Full DPS boundary",count=3,includeInFullDPS=true}'))
+    assert not isinstance(group, tuple), group
+    index = group['index']
+    lua.globals().treeLegacyGroup = index
+    added = api.add_gem(lua.eval('{groupIndex=treeLegacyGroup,gemName="Spark",level=1}'))
+    assert not isinstance(added, tuple), added
+    lua.execute('build.mainSocketGroup=treeLegacyGroup;build.calcsTab:BuildOutput()')
+    output = tree_call(tree_native, weaponSet=2, useFullDPS=True)
+    assert output['CombinedDPS'] > 0
+    assert output['FullDPS'] == pytest.approx(output['CombinedDPS'] * 3)
+    lua.execute('savedTreeFullDPS=build.calcsTab.calcs.calcFullDPS;build.calcsTab.calcs.calcFullDPS=function() error("requested full calculation failure") end')
+    ledger = lua.globals().treeTestAudit()
+    try:
+        assert 'requested full calculation failure' in tree_rejected(tree_native, weaponSet=2, useFullDPS=True)
+        tree_unchanged(lua, ledger)
+    finally:
+        lua.execute('build.calcsTab.calcs.calcFullDPS=savedTreeFullDPS')
 
 
 def test_failed_open_is_not_reported_ready_from_previous_build(backend):
@@ -475,50 +487,60 @@ def test_real_installed_arc_metadata_and_cost_use_poe2_abi(backend):
     assert result['perLevel'][1]['reqInt'] == lua.eval('calcLib.getGemStatRequirement(arc.grantedEffect.levels[20].levelRequirement,arc.reqInt,false)')
 
 
-def test_mastery_processing_failure_restores_all_node_fields(backend):
-    lua,api=backend
-    lua.execute('''
-      local node={id=5,sd={'before'},modKey='before',mods={'before'},modList={'before'}}
-      build.spec.nodes={[5]=node};build.spec.allocNodes={[5]=node}
-      build.spec.tree.masteryEffects={[8]={sd={'after'}}}
-      build.spec.tree.ProcessStats=function(self,n)
-        n.modKey='after';n.mods={};error('injected stat parser failure')
+def test_mastery_processing_failure_restores_all_node_fields(tree_native):
+    lua, _ = tree_native
+    # 0_5 has no PoE1 masteries: reject them explicitly, then exercise the same
+    # native ProcessStats failure boundary with a real PoE2 attribute choice.
+    assert 'mastery' in tree_rejected(tree_native, masteryEffects={'1140': 8}).lower()
+    lua.execute("""
+      savedTreeProcess=build.spec.tree.ProcessStats
+      local node=build.spec.nodes[1140]
+      build.spec.tree.ProcessStats=function()
+        node.modKey='changed';node.sd[1]='changed';node.modList.unexpected=true
+        error('injected stat parser failure')
       end
-      build.calcsTab.GetMiscCalculator=function() return function() error('unexpected calc') end,{} end
-    ''')
-    assert 'injected stat parser failure' in rejected(api.calc_with(lua.eval('{masteryEffects={[5]=8}}')))
-    assert lua.eval('build.spec.nodes[5].modKey') == 'before'
-    assert lua.eval('build.spec.nodes[5].sd[1]') == 'before'
-    assert lua.eval('build.spec.tree.masteryEffects[8].sd[1]') == 'after'
+    """)
+    ledger = lua.globals().treeTestAudit()
+    try:
+        assert 'injected stat parser failure' in tree_rejected(tree_native, **tree_path(tree_native))
+        tree_unchanged(lua, ledger)
+    finally:
+        lua.execute('build.spec.tree.ProcessStats=savedTreeProcess')
 
 
-def test_mixed_mastery_node_simulation_is_not_silently_ignored(backend):
-    lua,api=backend
-    lua.execute('''
-      local node={id=5,sd={'before'}}
-      build.spec.nodes={[5]=node,[6]={id=6}};build.spec.allocNodes={[5]=node}
-      build.spec.tree.masteryEffects={[8]={sd={'after'}}}
-      build.spec.tree.ProcessStats=function() end
-      build.calcsTab.GetMiscCalculator=function() return function(override)
-        assert(node.sd[1]=='after','mastery ignored');assert(next(override.addNodes),'node ignored')
-        error('both changes reached calculator')
-      end,{} end
-    ''')
-    assert 'both changes reached calculator' in rejected(api.calc_with(lua.eval('{addNodes={6},masteryEffects={[5]=8}}')))
-    assert lua.eval('build.spec.nodes[5].sd[1]') == 'before'
+def test_mixed_mastery_node_simulation_is_not_silently_ignored(tree_native):
+    lua, api = tree_native
+    lua.execute('build.spec:AllocNode(build.spec.nodes[1140]);build.calcsTab:BuildOutput()')
+    group = api.create_socket_group(lua.eval('{label="Mixed tree changes",count=1,includeInFullDPS=true}'))
+    assert not isinstance(group, tuple), group
+    lua.globals().treeLegacyGroup = group['index']
+    assert not isinstance(api.add_gem(lua.eval('{groupIndex=treeLegacyGroup,gemName="Spark",level=1}')), tuple)
+    lua.execute('build.mainSocketGroup=treeLegacyGroup;build.calcsTab:BuildOutput()')
+    baseline = tree_call(tree_native, weaponSet=1, useFullDPS=True)
+    proposal = tree_path(tree_native, target=56651)
+    proposal['attributeOverrides']['1140'] = 'int'
+    ledger = lua.globals().treeTestAudit()
+    mixed = tree_call(tree_native, weaponSet=1, useFullDPS=True, **proposal)
+    assert mixed['Int'] == baseline['Int'] + 5
+    assert mixed['Str'] == baseline['Str'] - 5
+    assert mixed['FullDPS'] > baseline['FullDPS']
+    # Adding a purported mastery to a valid mixed request cannot be ignored.
+    assert 'mastery' in tree_rejected(tree_native, **proposal, masteryEffects={'1140': 8}).lower()
+    tree_unchanged(lua, ledger)
 
 
 # Export-by-export audit. Sources are the installed PoB2 tree, never the PoE1
 # donor. This inventory intentionally lists every export so new APIs need review.
 # Runtime-only gaps are recorded here because this task owns no documentation files.
 EXPORT_AUDIT = [
+    ("evaluate_item_replacements", "API/ItemEvaluator.lua", "function M.evaluate(b,p)", "Detached native item graphs and original table-reference audits; native comparison and error preservation exercised in test_item_evaluator.py; deployment remains parent-owned"),
     ("evaluate_gem_setups", "Classes/GemSelectControl.lua", "function GemSelectClass:CalcOutputWithThisGem(calcFunc, gemData, useFullDPS, fastCalcOptions)", "Native temporary instance calculation; isolated skill undo transactions, full native outputs and XML/stats/history rollback; real GUI A/B checks remain parent-owned"),
     ("get_main_output export_stats", "Classes/CalcsTab.lua", "self.mainOutput = self.mainEnv.player.output", "MAIN/CALCS outputs; fail instead of serving stale stats; PoE2 Spirit/Ward and nested Minion"),
     ("get_tree set_tree update_tree_delta", "Classes/PassiveSpec.lua", "function PassiveSpecClass:ImportFromNodeList(className, classId, ascendClassId, secondaryAscendClassId, hashList, weaponSets, hashOverrides, masteryEffects, treeVersion)", "Preserved nine-argument import, weapon maps and CountAllocNodes; native path allocation; tree-wide rollback and class conversion still need native integration"),
     ("close_build open_build_xml", "Modules/Main.lua", "self.newModeArgs = {...}", "SetMode queues a frame transition; pending opens must not report the previous build ready"),
     ("export_build_xml save_build", "Modules/Build.lua", 'local dbXML = { elem = "PathOfBuilding2" }', "Native SaveDB; failed calculation/write/close returns error; native XML reimport still required"),
     ("set_level get_build_info set_view_mode", "Modules/Build.lua", "self.characterLevelAutoMode", "Native level/auto flag, spec names and UI modes; integer validation and dirty flag"),
-    ("calc_with", "Modules/Calcs.lua", "return function(override, useFullDPS, fastCalcOptions)", "Node-keyed override maps; FullDPS honored; masteries patch ProcessStats and restore all fields on failure"),
+    ("calc_with", "API/TreeEvaluator.lua", "function M.evaluate(b,params)", "Detached native graphs, exact optional build bindings, both weapon budgets and connectivity, attribute choices, full numeric outputs and shared-cache rollback; real headless engine coverage"),
     ("get_config set_config", "Classes/ConfigTab.lua", "self.input = self.configSets[configSetId].input", "Active config-set input, registry types/list values, enemyLevel override, controls/mod list/undo; no bandit/Pantheon counterpart"),
     ("get_skills create_socket_group add_gem set_gem_level set_gem_quality remove_skill remove_gem set_socket_group_enabled set_gem_enabled", "Classes/SkillsTab.lua", "function SkillsTabClass:ProcessSocketGroup(socketGroup)", "Independent active skill set; native gem IDs/levels, separate slot-linked support groups; generated gem lists protected; alternate quality IDs rejected"),
     ("set_main_selection", "Modules/Build.lua", "srcInstance.statSet[value.grantedEffectId] = index", "MAIN/CALCS selection, parts and per-effect statSet fields"),

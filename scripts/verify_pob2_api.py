@@ -7,6 +7,7 @@ The report includes build data: keep it private. The app and caller must use a
 separate PoB2 test runtime; this script does not start, close or save the app.
 """
 import argparse
+from poe2_xml_semantics import canonical as canon
 parser=argparse.ArgumentParser(description=__doc__)
 parser.add_argument('--port',type=int,required=True)
 parser.add_argument('--owned-build-name',required=True)
@@ -32,23 +33,6 @@ with socket.create_connection(('127.0.0.1',args.port),timeout=5) as s:
   return r
  assert call('get_build_info')['info']['name']==args.owned_build_name
  original=call('export_build_xml')['xml'];(out/'before.xml').write_text(original);stats=call('get_stats')['stats'];records=[]
- def canon(xml):
-  def visit(e):
-   attrs=dict(e.attrib)
-   for k in ('nodes','strNodes','dexNodes','intNodes'):
-    if k in attrs:attrs[k]=','.join(sorted(attrs[k].split(',')))
-   text=(e.text or '').strip()
-   if e.tag=='URL' and '/passive-skill-tree/' in text:
-    encoded=text.rsplit('/',1)[1];raw=base64.urlsafe_b64decode(encoded);assert raw[:4]==b'\x00\x00\x00\x06'
-    pos=6;groups=[]
-    for width in (2,2,4):
-     count=raw[pos];pos+=1;groups.append(tuple(sorted(raw[pos+i*width:pos+(i+1)*width] for i in range(count))));pos+=count*width
-    assert pos==len(raw)
-    text=(text.rsplit('/',1)[0],raw[:6],tuple(groups))
-   children=[visit(c) for c in e]
-   if e.tag in ('ConfigSet','ItemSet'):children.sort(key=repr)
-   return e.tag,tuple(sorted(attrs.items())),text,tuple(children)
-  return {e.tag:visit(e) for e in E.fromstring(xml) if e.tag in ['Build','Items','Skills','Tree','Config','Notes','Party']}
  def restore():
   call('open_build_xml',{'xml':original,'name':args.owned_build_name})
   for _ in range(30):

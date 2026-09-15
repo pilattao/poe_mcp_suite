@@ -1,0 +1,24 @@
+{
+  "path": "Modules/ModParser.lua",
+  "scope": "Runic Ward grammar with exact A/E/ES defence scope; no Archon recovery model or guard changes",
+  "stock_original_sha256": "01e2668025f70d0212378f815d10b189484d11c7db6e84e77c08c0e1dd068247",
+  "after_ward_costs_sha256": "b48ff91ce387203e36097f305e26548b2dbad4be44ee4fadef1d47f44e327c9c",
+  "final_sha256": "d22c07172faf417d80c3d40015feb5bc8f5487e3d18bdb063702fd6a50f81981",
+  "line_endings": "LF",
+  "merge": "Append replacements to the existing ward-costs-modparser target; keep its stock original_sha256 and set patched_sha256 to final_sha256.",
+  "replacements": [
+    {
+      "old": "\t[\"ward\"] = \"Ward\",\n",
+      "new": "\t[\"ward\"] = \"Ward\",\n\t[\"runic ward\"] = \"Ward\",\n\t[\"maximum runic ward\"] = \"Ward\",\n"
+    },
+    {
+      "old": "\t[\"armour, evasion and energy shield\"] = \"Defences\",\n",
+      "new": "\t[\"armour, evasion and energy shield\"] = { \"Armour\", \"Evasion\", \"EnergyShield\" },\n"
+    },
+    {
+      "old": "\t[\"as extra maximum energy shield\"] = \"GainAsEnergyShield\",\n",
+      "new": "\t[\"as extra maximum energy shield\"] = \"GainAsEnergyShield\",\n\t[\"as extra maximum runic ward\"] = \"GainAsWard\",\n"
+    }
+  ],
+  "archon": "No parser hunk. archon_delay_expires_x%_faster has a description but no verified parser or native calculation consumer."
+}

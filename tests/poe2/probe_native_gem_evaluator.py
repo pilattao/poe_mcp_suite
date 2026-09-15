@@ -3,7 +3,7 @@
 
 This never starts/restarts PoB, loads a build, commits an edit, or writes XML.
 --plan performs discovery reads only. --run-native authorizes temporary native
-scenario evaluation; API 1.3/nativeGemEvaluation and weapon set 2 are required.
+scenario evaluation; API 1.4/nativeGemEvaluation and weapon set 2 are required.
 Example (run by parent after rollout):
   .venv/bin/python tests/poe2/probe_native_gem_evaluator.py --run-native --port 55698
 Add --include-search to exercise the 48-trial bounded support search.
@@ -19,7 +19,8 @@ import time
 import xml.etree.ElementTree as ET
 
 METRICS = ['CombinedDPS', 'TotalDPS', 'FullDPS', 'MinionCombinedDPS', 'Life', 'EnergyShield',
-           'Mana', 'Spirit', 'SpiritUnreserved', 'ManaCost', 'LifeCost', 'ESCost', 'TotalEHP',
+           'Mana', 'Spirit', 'SpiritUnreserved', 'ManaCost', 'ManaPerSecondCost', 'LifeCost', 'LifePerSecondCost',
+           'ESCost', 'ESPerSecondCost', 'Ward', 'WardCost', 'WardPerSecondCost', 'WardRegenRecovery', 'Cooldown', 'TotalEHP',
            'Armour', 'Evasion', 'CharmLimit', 'FireResist', 'ColdResist', 'LightningResist', 'ChaosResist']
 
 
@@ -141,6 +142,12 @@ def build_cases(skills, explicit=None):
         'params': {'groupIndex': spark['index'], 'metric': 'CombinedDPS', 'setups': [
             {'name': 'Invalid gem', 'gems': references(spark) + [{'gemId': '__InvalidGemEvaluatorProbe__'}]},
             {'name': 'Original after error', 'gems': references(spark)}]}})
+    own_before = references(power)
+    own_after = copy.deepcopy(own_before)
+    next(g for g in own_after if g['refIndex'] == power_gem['index'])['level'] = 19
+    cases.append({'name': 'Verisium 18 -> 19; direct resources', 'params': {
+        'groupIndex': power['index'], 'evaluationGroupIndex': power['index'], 'resourceOnly': True,
+        'setups': [{'name': 'Level 18 resources', 'gems': own_before}, {'name': 'Level 19 resources', 'gems': own_after}]}})
     indices = {'spark': spark['index'], 'verisium': power['index'], 'bolt': bolt['index'],
                'item_bolt': item_bolt['index'], 'source_gem_index': item_gem['index'],
                'support_id': support['gemId'], 'skill_set_id': skills['activeSkillSetId']}
@@ -174,6 +181,14 @@ def run_case(api, before, case):
             continue
         if row.get('error'):
             raise RuntimeError(f'{case["name"]}: {row["error"]}')
+        if params.get('resourceOnly'):
+            ward_cost = row.get('output', {}).get('WardCost')
+            waived = any('HasNoCost' in note for note in row.get('resourceNotes', []))
+            if not waived and (not isinstance(ward_cost, (int, float)) or not math.isfinite(ward_cost)):
+                raise RuntimeError('Direct PvB comparison has no calculated WardCost; the native runtime needs the Ward-aware calculator. Base gem cost is not a modified cost.')
+            if not any(key in row.get('output', {}) for key in ['Cooldown', 'Ward', 'Speed']):
+                raise RuntimeError('Resource comparison returned no native timing or pool outputs')
+            continue
         value = row.get('output', {}).get(result['metric'])
         if not isinstance(value, (int, float)) or not math.isfinite(value):
             raise RuntimeError(f'{case["name"]}: native metric missing or nonfinite')
@@ -184,7 +199,7 @@ def run_case(api, before, case):
         if not any(s.get('status') == 'applied' for s in rows[1].get('supports', [])):
             raise RuntimeError('Item-granted support trial applied no support; inspect native compatibility output')
     print(json.dumps({'case': case['name'], 'seconds': round(elapsed, 3), 'metric': result['metric'],
-        'native_baseline': result['baseline'], 'results': [{k: row.get(k) for k in ['name', 'valid', 'output', 'deltas', 'supports', 'warnings', 'error']} for row in rows],
+        'native_baseline': result['baseline'], 'results': [{k: row.get(k) for k in ['name', 'gems', 'valid', 'output', 'deltas', 'supports', 'warnings', 'resourceNotes', 'error']} for row in rows],
         'conditions': result['conditions'], 'search': result['search'], 'rollback': proof,
         'independent_hashes': {key: digest(after[key]) for key in ['xml', 'stats', 'config', 'skills']}}, ensure_ascii=False), flush=True)
 
@@ -215,8 +230,8 @@ def main():
             'cases': [{'name': case['name'], 'params': case['params']} for case in cases]}, ensure_ascii=False), flush=True)
         if args.plan:
             return
-        if version.get('apiVersion') != '1.3.0' or version.get('features', {}).get('nativeGemEvaluation') is not True:
-            raise RuntimeError('Deploy API 1.3.0 with nativeGemEvaluation before running this probe')
+        if version.get('apiVersion') != '1.4.0' or version.get('features', {}).get('nativeGemEvaluation') is not True:
+            raise RuntimeError('Deploy API 1.4.0 with nativeGemEvaluation before running this probe')
         if not weapon_set_two(before['xml']):
             raise RuntimeError('Weapon set 2 is not selected; parent must prepare the owned runtime. Probe did not change it.')
         for case in cases:
