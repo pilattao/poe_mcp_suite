@@ -7488,11 +7488,12 @@
     "weighted_search": "Anonymous 1/2-weight queries rejected by source complexity limit; same-stat AND control succeeded; authenticated success unverified",
     "core_trade_configuration": "Enabled in project and template; current desktop tool catalog reload still unverified",
     "checkpoint3_clean_clone": "0f250bf remote checkout; core01ac3b3,API722f09a; npm ci,TypeScriptbuild,1251TS+54skip,121root+54data+74tradePythonpassed; pipcheckpassed",
-    "checkpoint4_local": "TypeScriptbuildPASS;1396coretestsPASS/60skip;294rootPythonPASS/10skip with explicit stock source;73dataPASS;131tradePASS. Clean remote reproduction pending.",
+    "checkpoint4_local": "TypeScriptbuildPASS;1396coretestsPASS/60skip;294rootPythonPASS/10skip with explicit stock source;73dataPASS;131tradePASS.",
     "api14_native_items": "6 actual native scenarios passed with full state preservation, including item-granted Choir19-to20 support/selection projection. Unknown Archon modifier rejected with unchanged live state.",
     "api14_native_tree": "56 actual native calculations across4 MCP cases; both weapon sets and exact full state preserved.",
     "api14_current_resources": "Fresh public snapshot PvB25 confirmed native/source: Ward146/CD2.838; withoutCDRII113/CD3.465. Snapshot and original disposable runtime state preserved. Ward regeneration output only available from source model.",
     "api14_stock_parser": "Complete Ward item grammar includes specific Armour/Evasion/ES mapping; generic Defences preserved. Native bodyWard557 vs old548, playerWard557 vs old712; six dependent computed fields changed, all configuration inputs preserved.",
-    "live_tool_catalog": "Three actual configured STDIO catalogs:136core/26data/46trade. Current desktop context still does not expose these tools."
+    "live_tool_catalog": "Three actual configured STDIO catalogs:136core/26data/46trade. Current desktop context still does not expose these tools.",
+    "checkpoint4_remote": "Remote code55f9d8e and all four pinned submodules fetched into an independent clean checkout. npmci,TypeScriptbuild,1396TS/60skip,294rootPython/10skip,73data,131trade andpipcheck all passed. Explicit stock source used for stock calculator tests. Working trees clean."
   }
 }

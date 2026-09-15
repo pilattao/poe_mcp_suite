@@ -9,7 +9,9 @@ See [setup](SETUP.md), [scope](PORT_SCOPE.md), [plan](PLAN.md) and [tool coverag
 The current working checkout passes the TypeScript build and 1,396 core tests
 (60 skipped), 294 API/installer/source Python tests (10 skipped with an explicit
 stock installation), 73 data tests and 131 trade/filter tests. These counts
-include unit and isolated-engine checks, not live verification of every tool.
+include unit and isolated-engine checks, not live verification of every tool. The
+same counts passed in an independent clean checkout fetched from remote code
+`55f9d8e`, after `npm ci`, the TypeScript build and Python dependency checks.
 
 Native API 1.4 adds detached item and passive-tree comparisons. Actual running
 PoB2 checks cover both weapon sets, bounded tree search, same-item replacement,
