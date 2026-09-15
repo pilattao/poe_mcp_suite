@@ -108,6 +108,7 @@ account/build snapshots stay outside version control.
 - Context usage now requires an explicit client/session source; no automatic
   history scanning. Recorded token usage is separate from current context occupancy.
 
-The initial clean remote clone resolved every submodule, installed Python
-requirements and built TypeScript. It exposed source syntax and fixture issues
-which were fixed; final clean-clone checks must use the updated pins.
+A clean remote clone resolved every updated submodule, installed Python
+requirements and built TypeScript. The same 943 TypeScript and 220 Python tests
+passed there. This establishes reproducible setup for the verified checkpoint;
+it does not close the remaining per-tool and external-access gaps.
