@@ -6657,9 +6657,9 @@
   },
   "completion": "incomplete; discovery, unit tests and selected live calls are separate evidence",
   "verification_checkpoint": {
-    "typescript_full": "943 passed,39 skipped; no failures",
+    "typescript_full": "1251 passed,54 skipped; no failures in clean remote code checkpoint0f250bf",
     "typescript_native_live": "18 passed in7suites",
-    "python_api_installer_source": "92 passed",
+    "python_api_installer_source": "121 passed in clean remote clone",
     "python_data": "54 passed",
     "python_trade_oauth": "74 passed",
     "native_mutations": "7 passed with semantic XML/numeric rollback",
@@ -6672,6 +6672,6 @@
     "ordinary_market_mcp": "8 checks passed including currencies, source metadata, ordinary listing search/fetch/comparison and invalid PoE1 filter",
     "weighted_search": "Anonymous 1/2-weight queries rejected by source complexity limit; same-stat AND control succeeded; authenticated success unverified",
     "core_trade_configuration": "Enabled in project and template; current desktop tool catalog reload still unverified",
-    "checkpoint3_clean_clone": "Pending verification against new child pins"
+    "checkpoint3_clean_clone": "0f250bf remote checkout; core01ac3b3,API722f09a; npm ci,TypeScriptbuild,1251TS+54skip,121root+54data+74tradePythonpassed; pipcheckpassed"
   }
 }

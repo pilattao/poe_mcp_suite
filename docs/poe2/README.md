@@ -115,7 +115,7 @@ requirements and built TypeScript. The same 943 TypeScript and 220 Python tests
 passed there. This establishes reproducible setup for the verified checkpoint;
 it does not close the remaining per-tool and external-access gaps.
 
-## Current development checkpoint: API 1.3
+## Current verified checkpoint: API 1.3
 
 - [Native gem evaluation](NATIVE_GEM_EVALUATION.md): six native cases passed,
   including a 48-trial support search and independent rollback checks.
@@ -137,3 +137,13 @@ it does not close the remaining per-tool and external-access gaps.
 The remaining full-port gaps still apply. In particular, aggregate currency
 valuations do not establish executable arbitrage, anonymous weighted search is
 limited by the source, and authenticated account access remains unverified.
+
+The published code checkpoint `0f250bf` was checked out from the remote in a
+clean verification clone. It resolved all submodules, installed the Node lockfile,
+built TypeScript and passed **1,251 TypeScript tests (54 skipped)**,
+**121 Lua/installer/source tests**, **54 data-server tests**, and
+**74 trade/OAuth tests**. Python dependency validation passed. Skipped tests and
+remaining external-access gaps are not counted as restored capabilities.
+
+Pinned code: core `01ac3b3`, native API `722f09a`. Subsequent documentation-only
+updates do not change that tested code state.
