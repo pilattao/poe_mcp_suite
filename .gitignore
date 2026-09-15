@@ -57,3 +57,12 @@ data-extraction-cache/
 *.bundle.bin
 *.datc64
 poe-schema.json
+
+# PoE2 local runtime and validation artifacts
+.local/
+.venv/
+__pycache__/
+*.pyc
+
+# Local port session log and user-specific acceptance evidence
+docs/poe2/STATUS.md

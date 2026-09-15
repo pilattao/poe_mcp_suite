@@ -1,3 +1,9 @@
+> **PoE2 adaptation (`poe2-port`) — work in progress.** This fork tracks
+> Path of Building Community (PoE2), with game-specific data, public trade,
+> character snapshots and native calculation integration. Full restoration is
+> not yet complete. Start with [PoE2 setup, evidence and gaps](docs/poe2/README.md)
+> and the [tool coverage inventory](docs/poe2/tool-coverage.json).
+
 # poe_mcp_suite
 
 > **This product is not affiliated with or endorsed by Grinding Gear Games in any way.**

@@ -1,22 +1,6 @@
-# Python dependencies for poe_mcp_suite
-#
-# Install all at once:
-#   pip install -r requirements.txt
-#
-# Then install POEMCP in editable mode:
-#   pip install -e POEMCP/
-#
-# Node.js (for pob-mcp) is installed separately — see CLAUDE.md.
-
-# ── poe-mcp-server ────────────────────────────────────────────────────────────
-mcp
-anyio
-
-# ── POEMCP ───────────────────────────────────────────────────────────────────
-httpx
-beautifulsoup4
-
-# ── RePoE (game data) — not on PyPI, install from GitHub ─────────────────────
-# PyPoE must be installed first as RePoE depends on it.
-git+https://github.com/brather1ng/PyPoE.git
-git+https://github.com/brather1ng/RePoE.git
+# Reproducible PoE2 suite runtime. Node dependencies live in pob-mcp/package-lock.json.
+# Install with: python -m pip install -r requirements.txt
+-r poe-trade-mcp/requirements.txt
+-e ./poe-data-mcp
+# Native Lua boundary verification uses the same runtime as the data reader.
+lupa>=2.6,<3

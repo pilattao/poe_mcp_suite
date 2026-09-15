@@ -2,35 +2,44 @@
   "mcpServers": {
     "pob": {
       "command": "node",
-      "args": ["/CHANGE_ME/poe_mcp_suite/pob-mcp/build/index.js"],
+      "args": [
+        "/CHANGE_ME/poe_mcp_suite/pob-mcp/build/index.js"
+      ],
       "env": {
-        "POB_DIRECTORY": "C:/Users/CHANGE_ME/AppData/Roaming/Path of Building Community/Builds",
+        "POE_GAME": "poe2",
+        "POE_LEAGUE": "Forbidden Rites",
+        "POB_INSTALL_DIR": "C:/Users/CHANGE_ME/AppData/Roaming/Path of Building Community (PoE2)",
+        "POB_DIRECTORY": "C:/Users/CHANGE_ME/Documents/Path of Building (PoE2)/Builds",
         "POB_LUA_ENABLED": "true",
         "POB_API_TCP": "true",
         "POB_API_TCP_PORT": "59166",
-        "POB_RECONNECT_TIMEOUT_MS": "300000",
-        "POE_TRADE_ENABLED": "true",
-        "POE_SESSION_ID": "CHANGE_ME_your_POESESSID_cookie",
-        "POE_ACCOUNT_NAME": "CHANGE_ME_YourAccount#1234"
+        "POB_RECONNECT_TIMEOUT_MS": "10000",
+        "POB_TIMEOUT_MS": "30000",
+        "POB_MAX_RESPONSE_CHARS": "0",
+        "POE_TRADE_ENABLED": "false"
       }
     },
     "poe-trade-mcp": {
-      "command": "python",
-      "args": ["/CHANGE_ME/poe_mcp_suite/poe-trade-mcp/poe_all.py"],
+      "command": "/CHANGE_ME/poe_mcp_suite/.venv/bin/python",
+      "args": [
+        "/CHANGE_ME/poe_mcp_suite/poe-trade-mcp/poe_all.py"
+      ],
       "env": {
-        "POE_SESSION_ID": "CHANGE_ME_your_POESESSID_cookie",
-        "POE_ACCOUNT_NAME": "CHANGE_ME_YourAccount#1234",
-        "POE_LEAGUE": "Mirage",
-        "POE_CONTACT_EMAIL": "CHANGE_ME_your@email.com"
+        "POE_GAME": "poe2",
+        "POE_LEAGUE": "Forbidden Rites",
+        "POE_NINJA_LEAGUE_SLUG": "forbiddenrites"
       }
     },
     "poe-data-mcp": {
-      "command": "python",
-      "args": ["/CHANGE_ME/poe_mcp_suite/poe-data-mcp/server.py"]
-    },
-    "google-ai-mode": {
-      "command": "npx",
-      "args": ["google-ai-mode-mcp@latest"]
+      "command": "/CHANGE_ME/poe_mcp_suite/.venv/bin/python",
+      "args": [
+        "/CHANGE_ME/poe_mcp_suite/poe-data-mcp/server.py"
+      ],
+      "env": {
+        "POE_GAME": "poe2",
+        "POE_LEAGUE": "Forbidden Rites",
+        "POB_INSTALL_DIR": "C:/Users/CHANGE_ME/AppData/Roaming/Path of Building Community (PoE2)"
+      }
     }
   }
 }

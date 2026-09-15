@@ -1,16 +1,19 @@
 [submodule "pob-mcp"]
 	path = pob-mcp
-	url = https://github.com/charleslucas/pob-mcp.git
+	url = https://github.com/pilattao/pob-mcp.git
+	branch = poe2-port
 [submodule "poe-mcp-server"]
 	path = poe-trade-mcp
-	url = https://github.com/charleslucas/poe-trade-mcp.git
+	url = https://github.com/pilattao/poe-trade-mcp.git
+	branch = poe2-port
 [submodule "POEMCP"]
 	path = poe-data-mcp
-	url = https://github.com/charleslucas/poe-data-mcp.git
+	url = https://github.com/pilattao/poe-data-mcp.git
+	branch = poe2-port
 [submodule "PathOfBuilding"]
 	path = PathOfBuilding
-	url = https://github.com/charleslucas/PathOfBuilding.git
-	branch = api-stdio
+	url = https://github.com/pilattao/PathOfBuilding-PoE2.git
+	branch = poe2-api
 [submodule "reference_data/skilltree"]
 	path = reference_data/skilltree
 	url = https://github.com/charleslucas/poe-skilltree-export.git
