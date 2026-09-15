@@ -512,6 +512,7 @@ def test_mixed_mastery_node_simulation_is_not_silently_ignored(backend):
 # donor. This inventory intentionally lists every export so new APIs need review.
 # Runtime-only gaps are recorded here because this task owns no documentation files.
 EXPORT_AUDIT = [
+    ("evaluate_gem_setups", "Classes/GemSelectControl.lua", "function GemSelectClass:CalcOutputWithThisGem(calcFunc, gemData, useFullDPS, fastCalcOptions)", "Native temporary instance calculation; isolated skill undo transactions, full native outputs and XML/stats/history rollback; real GUI A/B checks remain parent-owned"),
     ("get_main_output export_stats", "Classes/CalcsTab.lua", "self.mainOutput = self.mainEnv.player.output", "MAIN/CALCS outputs; fail instead of serving stale stats; PoE2 Spirit/Ward and nested Minion"),
     ("get_tree set_tree update_tree_delta", "Classes/PassiveSpec.lua", "function PassiveSpecClass:ImportFromNodeList(className, classId, ascendClassId, secondaryAscendClassId, hashList, weaponSets, hashOverrides, masteryEffects, treeVersion)", "Preserved nine-argument import, weapon maps and CountAllocNodes; native path allocation; tree-wide rollback and class conversion still need native integration"),
     ("close_build open_build_xml", "Modules/Main.lua", "self.newModeArgs = {...}", "SetMode queues a frame transition; pending opens must not report the previous build ready"),

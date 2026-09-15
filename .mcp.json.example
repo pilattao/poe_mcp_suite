@@ -16,7 +16,7 @@
         "POB_RECONNECT_TIMEOUT_MS": "10000",
         "POB_TIMEOUT_MS": "30000",
         "POB_MAX_RESPONSE_CHARS": "0",
-        "POE_TRADE_ENABLED": "false"
+        "POE_TRADE_ENABLED": "true"
       }
     },
     "poe-trade-mcp": {

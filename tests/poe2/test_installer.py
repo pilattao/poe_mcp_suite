@@ -14,7 +14,7 @@ def installation(tmp_path):
     original = b"main = {}\nfunction main:Init()\n  self.ready = true\nend\n\nfunction main:DetectUnicodeSupport()\nend\n"
     (install / "Modules/Main.lua").write_bytes(original)
     (install / "Path of Building-PoE2.exe").write_bytes(b"fixture")
-    for name in ["BuildOps.lua", "Handlers.lua", "TcpServer.lua", "Server.lua"]:
+    for name in ["BuildOps.lua", "Handlers.lua", "TcpServer.lua", "Server.lua", "GemEvaluator.lua"]:
         (source / name).write_text("return {}\n")
     return install, source, original
 
@@ -76,3 +76,15 @@ def test_missing_source_leaves_original_untouched(installation):
         api.install_api(install, source)
     assert (install / "Modules/Main.lua").read_bytes() == original
     assert not (install / "API").exists()
+
+def test_native_gem_evaluator_is_installed_verified_and_removed(installation):
+    install, source, _ = installation
+    api = load_installer()
+    content = b"-- native evaluator fixture\nreturn {evaluate=function() return true end}\n"
+    (source / "GemEvaluator.lua").write_bytes(content)
+    api.install_api(install, source)
+    assert (install / "API/GemEvaluator.lua").read_bytes() == content
+    state = api.read_state(install)
+    assert state["files"]["GemEvaluator.lua"] == api.sha(content)
+    api.uninstall_api(install)
+    assert not (install / "API/GemEvaluator.lua").exists()

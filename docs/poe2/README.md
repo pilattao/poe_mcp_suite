@@ -9,9 +9,11 @@ See [scope](PORT_SCOPE.md), [plan](PLAN.md) and [tool coverage](tool-coverage.js
 The template `.mcp.json.example` starts three servers. Adapt every path to the
 client host: `.venv/Scripts/python.exe` on Windows, `.venv/bin/python` on Linux;
 use `/mnt/c/...` paths for Windows files read by a Linux process. Public sources
-need no account cookie. The core server's older trade integration remains disabled
-in the template while its game-specific handlers are audited; the separately
-ported trade server exposes trade and economy tools. This is an explicit gap.
+need no account cookie. The core trade integration is enabled in the template
+after native metadata, ordinary searches, fetched listings and currency units
+were checked. Anonymous weighted queries currently hit GGG's reported complexity
+limit; authenticated weighted execution remains unverified. The separate trade
+server also exposes PoE2 trade and economy tools.
 
 Use Python 3.10+ with MCP SDK 1.x (`mcp>=1.26,<2`) and Node.js 20+.
 MCP SDK 2 renamed FastMCP and changed low-level registration APIs, so an unbounded
@@ -88,7 +90,7 @@ account/build snapshots stay outside version control.
   exchange/stash response schemas were inspected directly on 2026-09-15.
 - [PoE2DB](https://poe2db.tw/us/) and [PoE2 Wiki](https://www.poe2wiki.net/wiki/Path_of_Exile_2_Wiki).
 
-## Latest verified checkpoint (2026-09-15)
+## Previous published checkpoint (2026-09-15)
 
 - TypeScript: 943 passed, 39 skipped; a separate opt-in native/live selection
   passed 18 checks. Skipped cases are not counted as restored capabilities.
@@ -112,3 +114,26 @@ A clean remote clone resolved every updated submodule, installed Python
 requirements and built TypeScript. The same 943 TypeScript and 220 Python tests
 passed there. This establishes reproducible setup for the verified checkpoint;
 it does not close the remaining per-tool and external-access gaps.
+
+## Current development checkpoint: API 1.3
+
+- [Native gem evaluation](NATIVE_GEM_EVALUATION.md): six native cases passed,
+  including a 48-trial support search and independent rollback checks.
+- Core MCP gem comparison, support ranking, leveling, shopping and budget planning
+  passed against the dedicated runtime with full XML/stat/skill/config preservation.
+- Currency valuations use actual source denominations and explicit conversion.
+  Ordinary trade searches, query-bound listing comparisons, metadata and invalid
+  PoE1-filter rejection passed through the configured Windows-to-WSL launcher.
+- Shopping uses actual selected sets, rune/skill separation, explicit budgets and
+  live listings. Armour Spirit is a flat modifier constraint; weapon Spirit is a
+  displayed property. The two must not share an unconditional equipment filter.
+- Defense reports read actual hybrid pools and native configuration. Leveling
+  uses PoE2 class, gem and campaign definitions. Crafting uses native modifier
+  eligibility, sourced operations and supported conditional CoE probabilities.
+- Budget planning allocates observed candidates within an explicit purchase
+  allowance. Whole-build replacement outcomes and complete item evaluation are
+  still under development; possessions are not assigned invented prices.
+
+The remaining full-port gaps still apply. In particular, aggregate currency
+valuations do not establish executable arbitrage, anonymous weighted search is
+limited by the source, and authenticated account access remains unverified.

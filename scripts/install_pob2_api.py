@@ -7,7 +7,7 @@ from pathlib import Path
 import re
 import sys
 
-API_FILES = ("BuildOps.lua", "Handlers.lua", "TcpServer.lua", "Server.lua")
+API_FILES = ("BuildOps.lua", "Handlers.lua", "TcpServer.lua", "Server.lua", "GemEvaluator.lua")
 STATE_NAME = ".poe2-mcp-install.json"
 BEGIN = "-- [poe2-mcp API begin]"
 END = "-- [poe2-mcp API end]"

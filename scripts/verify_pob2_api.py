@@ -46,7 +46,7 @@ with socket.create_connection(('127.0.0.1',args.port),timeout=5) as s:
     assert pos==len(raw)
     text=(text.rsplit('/',1)[0],raw[:6],tuple(groups))
    children=[visit(c) for c in e]
-   if e.tag=='ConfigSet':children.sort(key=repr)
+   if e.tag in ('ConfigSet','ItemSet'):children.sort(key=repr)
    return e.tag,tuple(sorted(attrs.items())),text,tuple(children)
   return {e.tag:visit(e) for e in E.fromstring(xml) if e.tag in ['Build','Items','Skills','Tree','Config','Notes','Party']}
  def restore():
