@@ -5,13 +5,15 @@
       "server": "pob",
       "group": "getBuildGoalsToolSchemas",
       "name": "get_build_issues",
-      "description": "Quick issue scan: uncapped resistances, low life, over-reserved mana, incomplete spell suppression. Lighter than validate_build. Use this for a fast check; use validate_build when you want full analysis including flask immunities and damage scaling. Do NOT call both.",
+      "description": "Quick PoE2 issue scan using the live build XML and selected native outputs: configured resistance deficits, actual skill resource costs, Spirit reservation, attribute requirements and passive spending. Includes Life, ES, Mana, Spirit and Ward. Missing data and unassessed gear/socket completeness stay unknown; this is not a full viability assessment. Already included by lua_load_build. Explicit POE_GAME=poe1 retains the legacy scan.",
       "schema": {
         "type": "object",
         "properties": {}
       },
-      "status": "not_audited",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "Checkpoint2: dedicated unit contracts plus representative MCP/native/source checks. See docs/poe2/README.md and tests; unsupported or unverified mechanics remain explicit."
+      ]
     },
     {
       "server": "pob",
@@ -179,37 +181,67 @@
       "server": "pob",
       "group": "getConfigToolSchemas",
       "name": "get_config",
-      "description": "View current configuration state including charge usage, enemy settings, and active conditions. Requires Lua bridge with a loaded build.",
+      "description": "Read the selected native PoB2 config set, effective enemy level and raw inputs. Initialized flags do not establish applicability or uptime. Requires a live build.",
       "schema": {
         "type": "object",
         "properties": {}
       },
-      "status": "not_audited",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "Checkpoint2: dedicated unit contracts plus representative MCP/native/source checks. See docs/poe2/README.md and tests; unsupported or unverified mechanics remain explicit."
+      ]
     },
     {
       "server": "pob",
       "group": "getConfigToolSchemas",
       "name": "set_config",
-      "description": "Modify any Path of Building Config-tab option. `config_name` must be PoB's internal var name; an unrecognised name is rejected with an error (never silently ignored), and the response reports the value PoB actually STORED — if it says NOT applied, do not trust a sim that assumes it. Common keys — Charges: usePowerCharges, useFrenzyCharges, useEnduranceCharges | Conditions: conditionFortify, conditionLeeching, conditionOnFullLife | Buffs: buffOnslaught, minionbuffUnholyMight | Ailments/debuffs: multiplierWitheredStackCount | Enemy: enemyIsBoss ('Shaper'/'Pinnacle'/false), enemyLevel | Build: bandit ('None'/'Oak'/'Alira'/'Kraityn'), pantheonMajorGod, pantheonMinorGod. Call get_config to see all currently-set values.",
+      "description": "Apply explicit native configuration inputs and verify stored values in the same selected config set. Provide a flat config object or one config_name/value pair. Unknown native options are rejected before writes. PoE2 rejects Bandit/Pantheon fields. Read get_config for actual inputs and effective values.",
       "schema": {
         "type": "object",
         "properties": {
           "config_name": {
             "type": "string",
-            "description": "Name of configuration input to change (e.g., 'usePowerCharges', 'enemyIsBoss', 'conditionFortify')"
+            "description": "Exact native ConfigOptions variable, e.g. enemyLevel."
           },
           "value": {
-            "description": "New value (boolean for most flags, number for counts)"
+            "type": [
+              "boolean",
+              "number",
+              "string"
+            ],
+            "description": "Explicit value for config_name."
+          },
+          "config": {
+            "type": "object",
+            "minProperties": 1,
+            "additionalProperties": {
+              "type": [
+                "boolean",
+                "number",
+                "string"
+              ]
+            },
+            "description": "Flat batch of explicit native inputs. Unlisted inputs are retained."
           }
         },
-        "required": [
-          "config_name",
-          "value"
+        "oneOf": [
+          {
+            "required": [
+              "config_name",
+              "value"
+            ]
+          },
+          {
+            "required": [
+              "config"
+            ]
+          }
         ]
       },
-      "status": "not_audited",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "Checkpoint2: dedicated unit contracts plus representative MCP/native/source checks. See docs/poe2/README.md and tests; unsupported or unverified mechanics remain explicit."
+      ]
     },
     {
       "server": "pob",
@@ -246,29 +278,29 @@
       "server": "pob",
       "group": "getConfigToolSchemas",
       "name": "set_enemy_stats",
-      "description": "Configure enemy parameters for DPS calculations. Test against different enemy types (map boss, Shaper, Maven). Requires Lua bridge.",
+      "description": "Apply only the supplied enemy parameters to the native config and verify readback. Omitted fields remain unchanged; zero resistances are explicit valid values. Effective enemy level can differ from the stored override.",
       "schema": {
         "type": "object",
         "properties": {
           "level": {
             "type": "number",
-            "description": "Enemy level (default: 84)"
+            "description": "Explicit enemy level override"
           },
           "fire_resist": {
             "type": "number",
-            "description": "Fire resistance % (default: 40)"
+            "description": "Explicit fire resistance %"
           },
           "cold_resist": {
             "type": "number",
-            "description": "Cold resistance % (default: 40)"
+            "description": "Explicit cold resistance %"
           },
           "lightning_resist": {
             "type": "number",
-            "description": "Lightning resistance % (default: 40)"
+            "description": "Explicit lightning resistance %"
           },
           "chaos_resist": {
             "type": "number",
-            "description": "Chaos resistance % (default: 20)"
+            "description": "Explicit chaos resistance %"
           },
           "armor": {
             "type": "number",
@@ -280,14 +312,16 @@
           }
         }
       },
-      "status": "not_audited",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "Checkpoint2: dedicated unit contracts plus representative MCP/native/source checks. See docs/poe2/README.md and tests; unsupported or unverified mechanics remain explicit."
+      ]
     },
     {
       "server": "pob",
       "group": "getConfigToolSchemas",
       "name": "save_config_preset",
-      "description": "Save the current configuration (charges, conditions, enemy settings) as a named preset for quick reuse",
+      "description": "Save the selected config with game provenance. PoE2 presets contain explicit XML input overrides and do not copy initialized defaults.",
       "schema": {
         "type": "object",
         "properties": {
@@ -300,14 +334,16 @@
           "name"
         ]
       },
-      "status": "not_audited",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "Checkpoint2: dedicated unit contracts plus representative MCP/native/source checks. See docs/poe2/README.md and tests; unsupported or unverified mechanics remain explicit."
+      ]
     },
     {
       "server": "pob",
       "group": "getConfigToolSchemas",
       "name": "load_config_preset",
-      "description": "Load a previously saved configuration preset, restoring all charge, condition, and enemy settings at once",
+      "description": "Apply a saved preset for the current game as an explicit input patch. Unlisted inputs remain unchanged; cross-game presets are rejected.",
       "schema": {
         "type": "object",
         "properties": {
@@ -320,20 +356,24 @@
           "name"
         ]
       },
-      "status": "not_audited",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "Checkpoint2: dedicated unit contracts plus representative MCP/native/source checks. See docs/poe2/README.md and tests; unsupported or unverified mechanics remain explicit."
+      ]
     },
     {
       "server": "pob",
       "group": "getConfigToolSchemas",
       "name": "list_config_presets",
-      "description": "List all saved configuration presets",
+      "description": "List saved presets belonging to the current game.",
       "schema": {
         "type": "object",
         "properties": {}
       },
-      "status": "not_audited",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "Checkpoint2: dedicated unit contracts plus representative MCP/native/source checks. See docs/poe2/README.md and tests; unsupported or unverified mechanics remain explicit."
+      ]
     },
     {
       "server": "pob",
@@ -553,25 +593,27 @@
       "server": "pob",
       "group": "getLuaToolSchemas",
       "name": "lua_new_build",
-      "description": "Create a new blank build with specified class and ascendancy. In TCP mode this opens the new build in the running PoB GUI. Auto-starts the Lua bridge if needed. Classes and ascendancies (PoE1): Scion: Ascendant | Marauder: Juggernaut, Berserker, Chieftain | Ranger: Raider, Deadeye, Pathfinder | Witch: Occultist, Elementalist, Necromancer | Duelist: Slayer, Gladiator, Champion | Templar: Inquisitor, Hierophant, Guardian | Shadow: Assassin, Trickster, Saboteur",
+      "description": "Create a blank PoB2 build. Class and ascendancy names are validated against the installed native tree before opening; creation completes only after that class is selected and calculated. No PoE1 IDs or fallback class are used.",
       "schema": {
         "type": "object",
         "properties": {
           "class_name": {
             "type": "string",
-            "description": "Class name (e.g., 'Witch', 'Marauder')"
+            "description": "Exact class name from the installed PoB2 tree, e.g. Witch or Sorceress."
           },
           "ascendancy": {
             "type": "string",
-            "description": "Ascendancy class name (optional)"
+            "description": "Exact ascendancy belonging to that installed PoB2 class, e.g. Blood Mage for Witch. Omit or use None for unascended."
           }
         },
         "required": [
           "class_name"
         ]
       },
-      "status": "not_audited",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "Checkpoint2: dedicated unit contracts plus representative MCP/native/source checks. See docs/poe2/README.md and tests; unsupported or unverified mechanics remain explicit."
+      ]
     },
     {
       "server": "pob",
@@ -620,74 +662,53 @@
           "build_name": {
             "type": "string",
             "description": "Name of the build file to load"
+          },
+          "build_xml": {
+            "type": "string",
+            "description": "Complete build XML. For get_character_pob, pass its pob_xml field, not the JSON envelope. Preserves all sets and extensions."
+          },
+          "name": {
+            "type": "string",
+            "description": "Optional display name for the opened build."
           }
         },
-        "required": [
-          "build_name"
+        "oneOf": [
+          {
+            "required": [
+              "build_name"
+            ]
+          },
+          {
+            "required": [
+              "build_xml"
+            ]
+          }
         ]
       },
-      "status": "not_audited",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "Checkpoint2: dedicated unit contracts plus representative MCP/native/source checks. See docs/poe2/README.md and tests; unsupported or unverified mechanics remain explicit."
+      ]
     },
     {
       "server": "pob",
       "group": "getLuaToolSchemas",
       "name": "lua_import_character",
-      "description": "Import a character from the official PoE API into the currently loaded build (replaces tree, items, and gems). Requires a build loaded via lua_load_build or lua_new_build. If account_name is omitted, falls back to POE_ACCOUNT_NAME. Set POE_SESSION_ID env var for private profiles.",
+      "description": "Load a complete public PoB2 character snapshot. Call get_character_pob separately and pass its pob_xml field. Its pob_code and source metadata remain with that public result. This preserves the complete build and all sets; selective account/API imports are not supported by this public PoE2 route.",
       "schema": {
         "type": "object",
         "properties": {
-          "account_name": {
+          "pob_xml": {
             "type": "string",
-            "description": "PoE account name including discriminator (e.g., 'account#1234'). Optional when POE_ACCOUNT_NAME is set."
+            "description": "The actual pob_xml string returned by get_character_pob, without the JSON envelope."
           },
           "character_name": {
             "type": "string",
-            "description": "Exact character name to import (case-sensitive)."
-          },
-          "realm": {
-            "type": "string",
-            "description": "Realm: 'pc', 'xbox', or 'sony' (default: 'pc').",
-            "enum": [
-              "pc",
-              "xbox",
-              "sony"
-            ],
-            "default": "pc"
-          },
-          "clear_jewels": {
-            "type": "boolean",
-            "description": "Clear existing jewels before importing the new tree (default: true).",
-            "default": true
-          },
-          "clear_items": {
-            "type": "boolean",
-            "description": "Clear existing equipped items before importing (default: true).",
-            "default": true
-          },
-          "clear_skills": {
-            "type": "boolean",
-            "description": "Clear existing skill gems before importing (default: true).",
-            "default": true
-          },
-          "ignore_weapon_swap": {
-            "type": "boolean",
-            "description": "Skip importing the weapon swap slots AND keep the build's existing 'use second weapon set' flag untouched. Use this when you have a custom swap configuration (e.g. leveling weapons in the swap) you want preserved. Default false: import the swap items and force the calc engine to use the primary slots so stats match the character's in-game active set.",
-            "default": false
-          },
-          "bandit": {
-            "type": "string",
-            "description": "Bandit choice to set after import. The PoE API does not expose this — ask the user which bandit they chose. Values: 'None' (Kill All, +1 passive point in current PoE1 — note the second point that was historically from Kill All is now from the 'Through Sacred Ground' quest), 'Alira' (+5 mana regen, +15% all res, +20% crit multi), 'Kraityn' (+6% atk/cast speed, +6% ailment avoidance, +6% move speed), 'Oak' (+2% life regen, +20 max life, +6% phys reduction).",
-            "enum": [
-              "None",
-              "Alira",
-              "Kraityn",
-              "Oak"
-            ]
+            "description": "Optional display name for this public snapshot; no account lookup is performed."
           }
         },
         "required": [
-          "character_name"
+          "pob_xml"
         ]
       },
       "status": "not_audited",
@@ -739,13 +760,31 @@
       "server": "pob",
       "group": "getLuaToolSchemas",
       "name": "get_context_usage",
-      "description": "Returns real-time token usage for the current Claude Code session: how many tokens are in context, how close to the window limit, and a breakdown of cached vs new tokens. Reads from the Claude Code session JSONL log (~/.claude/projects/). Use this before loading heavy data to gauge available headroom.",
+      "description": "Read usage metadata from an explicitly selected Codex or Claude transcript whose session ID matches thread_id. Requires client, transcript_path and thread_id together. No arguments returns unavailable without filesystem access; never discovers or reads another session automatically. Cached input is a subset; cumulative usage is distinct from context occupancy and account limits.",
       "schema": {
         "type": "object",
-        "properties": {}
+        "properties": {
+          "client": {
+            "type": "string",
+            "enum": [
+              "codex",
+              "claude"
+            ]
+          },
+          "transcript_path": {
+            "type": "string",
+            "description": "Explicit absolute path to the current authorized session transcript."
+          },
+          "thread_id": {
+            "type": "string",
+            "description": "Expected current session ID; must match the transcript identity."
+          }
+        }
       },
-      "status": "not_audited",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "Checkpoint2: dedicated unit contracts plus representative MCP/native/source checks. See docs/poe2/README.md and tests; unsupported or unverified mechanics remain explicit."
+      ]
     },
     {
       "server": "pob",
@@ -954,8 +993,10 @@
         "type": "object",
         "properties": {}
       },
-      "status": "not_audited",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "Checkpoint2: dedicated unit contracts plus representative MCP/native/source checks. See docs/poe2/README.md and tests; unsupported or unverified mechanics remain explicit."
+      ]
     },
     {
       "server": "pob",
@@ -1002,8 +1043,10 @@
           "profile_path"
         ]
       },
-      "status": "not_audited",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "Checkpoint2: dedicated unit contracts plus representative MCP/native/source checks. See docs/poe2/README.md and tests; unsupported or unverified mechanics remain explicit."
+      ]
     },
     {
       "server": "pob",
@@ -1054,8 +1097,10 @@
           }
         }
       },
-      "status": "not_audited",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "Checkpoint2: dedicated unit contracts plus representative MCP/native/source checks. See docs/poe2/README.md and tests; unsupported or unverified mechanics remain explicit."
+      ]
     },
     {
       "server": "pob",
@@ -1074,11 +1119,27 @@
           },
           "classId": {
             "type": "number",
-            "description": "Class ID (0=Scion, 1=Marauder, 2=Ranger, 3=Witch, 4=Duelist, 5=Templar, 6=Shadow). If omitted, preserves current class."
+            "description": "PoB2 class ID from lua_get_tree. Omit to preserve the current class; do not use PoE1 class IDs."
           },
           "ascendClassId": {
             "type": "number",
-            "description": "Ascendancy class ID (0=None, 1-3 class-specific). Scion: 1=Ascendant | Marauder: 1=Juggernaut, 2=Berserker, 3=Chieftain | Ranger: 1=Raider, 2=Deadeye, 3=Pathfinder | Witch: 1=Occultist, 2=Elementalist, 3=Necromancer | Duelist: 1=Slayer, 2=Gladiator, 3=Champion | Templar: 1=Inquisitor, 2=Hierophant, 3=Guardian | Shadow: 1=Assassin, 2=Trickster, 3=Saboteur"
+            "description": "PoB2 ascendancy ID from lua_get_tree. Omit to preserve the current ascendancy."
+          },
+          "weaponSets": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "integer",
+              "enum": [
+                0,
+                1,
+                2
+              ]
+            },
+            "description": "PoB2 node ID to allocation mode: 0 common, 1 weapon set 1, 2 weapon set 2. Omit to preserve assignments; an empty object makes all requested nodes common."
+          },
+          "treeVersion": {
+            "type": "string",
+            "description": "PoB2 tree version from lua_get_tree, e.g. 0_5. Omit to preserve."
           }
         },
         "required": [
@@ -1121,7 +1182,7 @@
       "server": "pob",
       "group": "getLuaToolSchemas",
       "name": "lua_get_build_info",
-      "description": "Get metadata about the currently loaded build: name, character level, class, ascendancy, and tree version. Useful to confirm which build is active after lua_load_build or lua_new_build. Classes and ascendancies (PoE1): Scion: Ascendant | Marauder: Juggernaut, Berserker, Chieftain | Ranger: Raider, Deadeye, Pathfinder | Witch: Occultist, Elementalist, Necromancer | Duelist: Slayer, Gladiator, Champion | Templar: Inquisitor, Hierophant, Guardian | Shadow: Assassin, Trickster, Saboteur",
+      "description": "Get actual metadata from the loaded PoB2 build: name, character level, class, ascendancy and tree version. Pending native mode transitions return an error.",
       "schema": {
         "type": "object",
         "properties": {}
@@ -1155,8 +1216,10 @@
           "gem_name"
         ]
       },
-      "status": "not_audited",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "Checkpoint2: dedicated unit contracts plus representative MCP/native/source checks. See docs/poe2/README.md and tests; unsupported or unverified mechanics remain explicit."
+      ]
     },
     {
       "server": "pob",
@@ -1200,8 +1263,10 @@
           "query"
         ]
       },
-      "status": "not_audited",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "Checkpoint2: dedicated unit contracts plus representative MCP/native/source checks. See docs/poe2/README.md and tests; unsupported or unverified mechanics remain explicit."
+      ]
     },
     {
       "server": "pob",
@@ -1217,10 +1282,12 @@
           },
           "slot_name": {
             "type": "string",
-            "description": "Slot to equip in: Weapon 1, Weapon 2, Helmet, Body Armour, Gloves, Boots, Amulet, Ring 1, Ring 2, Belt, Flask 1-5",
+            "description": "Equipment slot to equip: Weapon 1, Weapon 2, Weapon 1 Swap, Weapon 2 Swap, Helmet, Body Armour, Gloves, Boots, Amulet, Ring 1, Ring 2, Ring 3, Belt, Flask 1, Flask 2, Charm 1, Charm 2, Charm 3, Arm 1, Arm 2, Leg 1, Leg 2",
             "enum": [
               "Weapon 1",
               "Weapon 2",
+              "Weapon 1 Swap",
+              "Weapon 2 Swap",
               "Helmet",
               "Body Armour",
               "Gloves",
@@ -1228,12 +1295,17 @@
               "Amulet",
               "Ring 1",
               "Ring 2",
+              "Ring 3",
               "Belt",
               "Flask 1",
               "Flask 2",
-              "Flask 3",
-              "Flask 4",
-              "Flask 5"
+              "Charm 1",
+              "Charm 2",
+              "Charm 3",
+              "Arm 1",
+              "Arm 2",
+              "Leg 1",
+              "Leg 2"
             ]
           }
         },
@@ -1255,10 +1327,12 @@
         "properties": {
           "slot_name": {
             "type": "string",
-            "description": "Slot to clear: Weapon 1, Weapon 2, Helmet, Body Armour, Gloves, Boots, Amulet, Ring 1, Ring 2, Belt, Flask 1-5",
+            "description": "Equipment slot to clear: Weapon 1, Weapon 2, Weapon 1 Swap, Weapon 2 Swap, Helmet, Body Armour, Gloves, Boots, Amulet, Ring 1, Ring 2, Ring 3, Belt, Flask 1, Flask 2, Charm 1, Charm 2, Charm 3, Arm 1, Arm 2, Leg 1, Leg 2",
             "enum": [
               "Weapon 1",
               "Weapon 2",
+              "Weapon 1 Swap",
+              "Weapon 2 Swap",
               "Helmet",
               "Body Armour",
               "Gloves",
@@ -1266,12 +1340,17 @@
               "Amulet",
               "Ring 1",
               "Ring 2",
+              "Ring 3",
               "Belt",
               "Flask 1",
               "Flask 2",
-              "Flask 3",
-              "Flask 4",
-              "Flask 5"
+              "Charm 1",
+              "Charm 2",
+              "Charm 3",
+              "Arm 1",
+              "Arm 2",
+              "Leg 1",
+              "Leg 2"
             ]
           }
         },
@@ -1312,13 +1391,26 @@
       "server": "pob",
       "group": "getLuaToolSchemas",
       "name": "toggle_flask",
-      "description": "Toggle a flask on/off",
+      "description": "Activate or deactivate a PoE2 flask or charm. Provide exactly one selector: flask_number 1 (life) or 2 (mana), or slotName for a Flask or Charm slot.",
       "schema": {
         "type": "object",
         "properties": {
           "flask_number": {
-            "type": "number",
-            "description": "Flask slot number (1-5)"
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 2,
+            "description": "Flask slot number: 1 life, 2 mana. Omit when using slotName."
+          },
+          "slotName": {
+            "type": "string",
+            "enum": [
+              "Flask 1",
+              "Flask 2",
+              "Charm 1",
+              "Charm 2",
+              "Charm 3"
+            ],
+            "description": "Explicit PoB2 consumable slot. Omit flask_number when using slotName."
           },
           "active": {
             "type": "boolean",
@@ -1326,8 +1418,19 @@
           }
         },
         "required": [
-          "flask_number",
           "active"
+        ],
+        "oneOf": [
+          {
+            "required": [
+              "flask_number"
+            ]
+          },
+          {
+            "required": [
+              "slotName"
+            ]
+          }
         ]
       },
       "status": "partial",
@@ -1369,6 +1472,16 @@
           "active_skill_index": {
             "type": "number",
             "description": "Active skill index within group (1-based, optional). Selects which active skill in the group to use for DPS calculation — relevant when a group has multiple active skills."
+          },
+          "skill_part": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "Skill part index (1-based, optional)."
+          },
+          "stat_set": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "PoE2 stat-set index within the selected active skill (1-based). Updates MAIN and CALCS selections; independent of skill_part."
           }
         },
         "required": [
@@ -1384,7 +1497,7 @@
       "server": "pob",
       "group": "getLuaToolSchemas",
       "name": "create_socket_group",
-      "description": "Create a new socket group for skill gems",
+      "description": "Create a gem group in the active PoE2 skill set. To support an item-granted skill, create a separate support group in that equipment slot; generated groups are read-only.",
       "schema": {
         "type": "object",
         "properties": {
@@ -1398,6 +1511,8 @@
             "enum": [
               "Weapon 1",
               "Weapon 2",
+              "Weapon 1 Swap",
+              "Weapon 2 Swap",
               "Helmet",
               "Body Armour",
               "Gloves",
@@ -1405,12 +1520,8 @@
               "Amulet",
               "Ring 1",
               "Ring 2",
-              "Belt",
-              "Flask 1",
-              "Flask 2",
-              "Flask 3",
-              "Flask 4",
-              "Flask 5"
+              "Ring 3",
+              "Belt"
             ]
           },
           "enabled": {
@@ -1608,13 +1719,13 @@
       "server": "pob",
       "group": "getLuaToolSchemas",
       "name": "list_spectres",
-      "description": "List the spectres set on the build (the 'raised' set PoB simulates for Raise Spectre), and optionally search PoB's full spectre library by name. IMPORTANT: character imports NEVER set spectres — the PoE API doesn't report them — so a build with none set simulates generic spectres and misses any player/ally buffs (e.g. Perfect Guardian Turtle's Determination aura). Spectre benefits are also greppable in reference_data/text_lake/spectres.txt (grants: column).",
+      "description": "List the spectre selected per gem in the active PoE2 skill set, including group/gem indices and enabled state. Optionally search the installed spectre catalog.",
       "schema": {
         "type": "object",
         "properties": {
           "search": {
             "type": "string",
-            "description": "Optional case-insensitive substring to search the spectre library (e.g. 'turtle', 'perfect')"
+            "description": "Optional case-insensitive substring to search the installed PoE2 spectre catalog."
           }
         }
       },
@@ -1625,7 +1736,7 @@
       "server": "pob",
       "group": "getLuaToolSchemas",
       "name": "set_spectres",
-      "description": "Set which spectres are 'raised' on the build — the GUI-only spectre picker, now scriptable. Accepts display names (fuzzy: exact id → exact name → unique substring, e.g. 'perfect guardian turtle') or monster metadata ids. Replaces the whole list by default; mode 'add' appends. Triggers a recalc, so player-affecting spectre auras (Determination, Onslaught, etc.) show up in stats immediately. Spectres persist across imports — set once, re-set only when the in-game zoo changes.",
+      "description": "Select exactly one spectre per gem using group_index and gem_index from the active skill set. Pass one catalog name or metadata ID. Use separate gems/groups for different spectres. Updates that gem selection and the shared catalog, then recalculates.",
       "schema": {
         "type": "object",
         "properties": {
@@ -1634,19 +1745,32 @@
             "items": {
               "type": "string"
             },
-            "description": "Spectre names or metadata ids, e.g. ['Perfect Guardian Turtle', 'Perfect Forest Warrior']"
+            "minItems": 1,
+            "maxItems": 1,
+            "description": "Exactly one PoE2 spectre name or metadata ID for this gem."
           },
           "mode": {
             "type": "string",
             "enum": [
-              "replace",
-              "add"
+              "replace"
             ],
-            "description": "'replace' (default) sets exactly this list; 'add' appends to the existing list"
+            "description": "replace selects the spectre for this gem (default)."
+          },
+          "group_index": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "Group index in the active skill set (1-based)."
+          },
+          "gem_index": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "Spectre gem index within that group (1-based)."
           }
         },
         "required": [
-          "spectres"
+          "spectres",
+          "group_index",
+          "gem_index"
         ]
       },
       "status": "partial",
@@ -1713,6 +1837,8 @@
             "enum": [
               "Weapon 1",
               "Weapon 2",
+              "Weapon 1 Swap",
+              "Weapon 2 Swap",
               "Helmet",
               "Body Armour",
               "Gloves",
@@ -1720,12 +1846,8 @@
               "Amulet",
               "Ring 1",
               "Ring 2",
-              "Belt",
-              "Flask 1",
-              "Flask 2",
-              "Flask 3",
-              "Flask 4",
-              "Flask 5"
+              "Ring 3",
+              "Belt"
             ]
           }
         },
@@ -1934,7 +2056,7 @@
       "server": "pob",
       "group": "getOptimizationToolSchemas",
       "name": "analyze_items",
-      "description": "Analyze equipped items and suggest upgrades or improvements",
+      "description": "Read selected PoE2 items, exact modifiers and measured constraints from live state or a requested XML file. Missing stats stay unknown. Candidate upgrade rankings require native comparisons and current prices.",
       "schema": {
         "type": "object",
         "properties": {
@@ -1943,12 +2065,12 @@
             "description": "Build to analyze"
           }
         },
-        "required": [
-          "build_name"
-        ]
+        "required": []
       },
-      "status": "not_audited",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "Checkpoint2: dedicated unit contracts plus representative MCP/native/source checks. See docs/poe2/README.md and tests; unsupported or unverified mechanics remain explicit."
+      ]
     },
     {
       "server": "pob",
@@ -2368,8 +2490,10 @@
           "build_name"
         ]
       },
-      "status": "not_audited",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "Checkpoint2: dedicated unit contracts plus representative MCP/native/source checks. See docs/poe2/README.md and tests; unsupported or unverified mechanics remain explicit."
+      ]
     },
     {
       "server": "pob",
@@ -2488,8 +2612,10 @@
           }
         }
       },
-      "status": "not_audited",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "Checkpoint2: dedicated unit contracts plus representative MCP/native/source checks. See docs/poe2/README.md and tests; unsupported or unverified mechanics remain explicit."
+      ]
     },
     {
       "server": "pob",
@@ -2670,13 +2796,15 @@
       "server": "pob",
       "group": "getToolSchemas",
       "name": "evaluate_threshold_jewels",
-      "description": "Evaluate each socketed jewel's 'With at least N <Attribute> in Radius' threshold mods against the build's current tree. Reports whether each threshold is triggered, the current attribute sum in radius, and the margin (positive = triggered with headroom, negative = short by N points). Useful for jewel shopping ('would this Brawn fit my tree?') and for diagnosing missing effects ('I think I have +6% Reservation Efficiency from Conqueror's Efficiency, but the threshold isn't met'). Phase-1 scope: handles Str/Dex/Int attribute thresholds; 'Notable in Radius' and 'Total Attributes' patterns are Phase-2. Reads from the live build via PoB.",
+      "description": "Scan equipped jewels for attribute-threshold syntax using the exact active native tree. Supported legacy PoE1 thresholds count printed base attributes on all eligible nodes, including unallocated nodes, using the item radius where supplied. Reports threshold, total and margin; transformations and overrides are outside the static calculation. PoE2 attribute-threshold evaluation is unavailable unless a native counterpart and its mechanics are established; retained legacy parser patterns are not proof of support.",
       "schema": {
         "type": "object",
         "properties": {}
       },
-      "status": "not_audited",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "Checkpoint2: dedicated unit contracts plus representative MCP/native/source checks. See docs/poe2/README.md and tests; unsupported or unverified mechanics remain explicit."
+      ]
     },
     {
       "server": "pob",
@@ -2741,7 +2869,7 @@
       "server": "pob",
       "group": "getToolSchemas",
       "name": "calculate_mod_odds",
-      "description": "Compute the probability of hitting target modifiers when rolling a base item, using the game's real spawn weights (from ModItem.lua). Answers 'what are my odds of T1 Life + T1 Fire Resistance on this base at ilvl 86?'. EXACT for the modeled cases: mods drawn weighted from the prefix/suffix pool, one mod per mod-group (sampling without replacement at group level), prefixes/suffixes independent given the slot counts.\n\nEach target is `{stat}` (keyword, e.g. 'maximum Life' — must resolve to a single mod group or you'll get a disambiguation list) OR `{group}` (exact PoB group key, e.g. 'IncreasedLife'), plus optional `min_tier` (worst acceptable tier rank; e.g. 2 = T1 or T2). `method`: 'chaos' (full rare reroll, default, 3/3 slots), 'alt' (magic item, 1 prefix + 1 suffix), or 'essence' (pass `essence_name` — the forced mod is guaranteed and pre-placed). Override slot assumptions with `prefix_count`/`suffix_count` (0–3).\n\nOutput: per-target weight share, P(prefix targets), P(suffix targets), tier-filter factor, combined probability, and estimated full rerolls (1/P). LIMITATIONS (deliberately not modeled — use Craft of Exile for these): fossil/harvest weight changes, meta-craft sequences, exact per-orb affix-count variance, and currency cost.",
+      "description": "Estimate one plain PoE2 exalt, augment or regal action using a validated Craft of Exile cache. Requires actual item rarity and the complete existing affix ID list. Native PoB 1/0 flags are eligibility, not probabilities. Targets use CoE family names or coe:<group-id>. Unsupported methods, effects, source patches and ambiguous mappings produce no numerical odds. Repeated attempts and currency cost are not modeled.",
       "schema": {
         "type": "object",
         "properties": {
@@ -2764,7 +2892,7 @@
                 },
                 "group": {
                   "type": "string",
-                  "description": "Exact PoB mod-group key (e.g. 'IncreasedLife', 'FireResistance'). Use this to disambiguate."
+                  "description": "CoE family name, e.g. Strength, or coe:<group-id>."
                 },
                 "min_tier": {
                   "type": "number",
@@ -2777,11 +2905,11 @@
           "method": {
             "type": "string",
             "enum": [
-              "chaos",
-              "alt",
-              "essence"
+              "exalt",
+              "augment",
+              "regal"
             ],
-            "description": "Rolling method. 'chaos' = full rare reroll (default). 'alt' = magic 1p/1s. 'essence' = forced mod (needs essence_name)."
+            "description": "Explicit one-step PoE2 operation; no default reroll is assumed."
           },
           "essence_name": {
             "type": "string",
@@ -2795,6 +2923,21 @@
             "type": "number",
             "description": "Assumed suffix slots filled (0–3, default 3 for chaos / 1 for alt)."
           },
+          "item_rarity": {
+            "type": "string",
+            "enum": [
+              "magic",
+              "rare"
+            ],
+            "description": "PoE2 current rarity."
+          },
+          "existing_mod_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Complete current explicit affix CoE keys, even if empty. Slot counts alone are insufficient."
+          },
           "raw_json": {
             "type": "boolean",
             "description": "Return structured JSON. Default false."
@@ -2803,11 +2946,16 @@
         "required": [
           "base_name",
           "ilvl",
-          "targets"
+          "targets",
+          "method",
+          "item_rarity",
+          "existing_mod_ids"
         ]
       },
-      "status": "not_audited",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "Checkpoint2: dedicated unit contracts plus representative MCP/native/source checks. See docs/poe2/README.md and tests; unsupported or unverified mechanics remain explicit."
+      ]
     },
     {
       "server": "pob",
@@ -2942,8 +3090,10 @@
           }
         }
       },
-      "status": "not_audited",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "Checkpoint2: dedicated unit contracts plus representative MCP/native/source checks. See docs/poe2/README.md and tests; unsupported or unverified mechanics remain explicit."
+      ]
     },
     {
       "server": "pob",
@@ -2978,8 +3128,10 @@
           }
         }
       },
-      "status": "not_audited",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "Checkpoint2: dedicated unit contracts plus representative MCP/native/source checks. See docs/poe2/README.md and tests; unsupported or unverified mechanics remain explicit."
+      ]
     },
     {
       "server": "pob",
@@ -3022,29 +3174,28 @@
           "base_name"
         ]
       },
-      "status": "not_audited",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "Checkpoint2: dedicated unit contracts plus representative MCP/native/source checks. See docs/poe2/README.md and tests; unsupported or unverified mechanics remain explicit."
+      ]
     },
     {
       "server": "pob",
       "group": "getToolSchemas",
       "name": "get_atlas_node",
-      "description": "Look up a single Atlas of Worlds tree node by ID. Returns name, stats, type (Notable/Keystone/Jewel Socket/Mastery/Travel/Wormhole/Ascendancy), positional fields, and in/out connections. Data sourced from `reference_data/atlastree/data.json` (GGG's official atlas-export, mirrored in our community fork submodule). The data_patches.json overlay is applied if present. Unlike `get_tree_node` for the passive tree, there's no jewel-transformation layer — atlas doesn't have Timeless-Jewel-equivalent mechanics. Variants supported: `default`, `league` (current league), `ruthless`, `ruthless-league`.",
+      "description": "Read a PoE2 atlas node from the RePoE export, including source version, checksum, subtree and graph links. Only the default PoE2 graph is supported. Selector effects and player allocation are not supplied by this dataset.",
       "schema": {
         "type": "object",
         "properties": {
           "node_id": {
             "type": "string",
-            "description": "Atlas node ID (e.g., '1670' for Fortune's Favour)."
+            "description": "PoE2 atlas node ID from search_atlas_nodes."
           },
           "variant": {
             "type": "string",
             "description": "Atlas tree variant. Defaults to 'default' (standard atlas).",
             "enum": [
-              "default",
-              "league",
-              "ruthless",
-              "ruthless-league"
+              "default"
             ]
           },
           "raw_json": {
@@ -3056,14 +3207,16 @@
           "node_id"
         ]
       },
-      "status": "not_audited",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "Checkpoint2: dedicated unit contracts plus representative MCP/native/source checks. See docs/poe2/README.md and tests; unsupported or unverified mechanics remain explicit."
+      ]
     },
     {
       "server": "pob",
       "group": "getToolSchemas",
       "name": "search_atlas_nodes",
-      "description": "Search the atlas tree for nodes matching a keyword (name or stat text). Optional node-type filter (`keystone`, `notable`, `jewel`, `mastery`, `wormhole`, `ascendancy`, `normal`). Useful for finding all atlas notables related to a mechanic (e.g., 'breach', 'expedition', 'heist'). Variant-aware (default/league/ruthless/ruthless-league).",
+      "description": "Search native PoE2 atlas node names and stat text, with source/version metadata. Display-only decorations are excluded. Only variant default is supported.",
       "schema": {
         "type": "object",
         "properties": {
@@ -3093,10 +3246,7 @@
             "type": "string",
             "description": "Atlas tree variant. Defaults to 'default'.",
             "enum": [
-              "default",
-              "league",
-              "ruthless",
-              "ruthless-league"
+              "default"
             ]
           }
         },
@@ -3104,14 +3254,16 @@
           "query"
         ]
       },
-      "status": "not_audited",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "Checkpoint2: dedicated unit contracts plus representative MCP/native/source checks. See docs/poe2/README.md and tests; unsupported or unverified mechanics remain explicit."
+      ]
     },
     {
       "server": "pob",
       "group": "getToolSchemas",
       "name": "find_atlas_path_to_node",
-      "description": "Find the shortest path of passive nodes between two atlas tree nodes (BFS over the undirected in/out graph). The atlas tree's allocation state isn't visible to our tools via the public PoE API, so this tool requires an explicit `from_node_id` — there's no 'from build frontier' mode like in the passive-tree equivalent. Use it to measure distance between two notables, or to plan a route from your current allocation frontier (which you'd tell the tool manually) to a target notable.",
+      "description": "Find an undirected graph path between explicit PoE2 atlas node IDs. Excludes display-only nodes. Distance is graph edges, not verified allocation cost; quest gates and current allocation remain unknown.",
       "schema": {
         "type": "object",
         "properties": {
@@ -3127,10 +3279,7 @@
             "type": "string",
             "description": "Atlas tree variant. Defaults to 'default'.",
             "enum": [
-              "default",
-              "league",
-              "ruthless",
-              "ruthless-league"
+              "default"
             ]
           }
         },
@@ -3139,20 +3288,24 @@
           "from_node_id"
         ]
       },
-      "status": "not_audited",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "Checkpoint2: dedicated unit contracts plus representative MCP/native/source checks. See docs/poe2/README.md and tests; unsupported or unverified mechanics remain explicit."
+      ]
     },
     {
       "server": "pob",
       "group": "getToolSchemas",
       "name": "list_radius_effect_jewels",
-      "description": "Scan equipped jewels for 'in Radius' mods that aren't Timeless-Jewel transformations and aren't attribute thresholds — i.e. the long tail: Energy From Within, Healthy Mind, Fertile Mind, Might of the Meek, Brute Force Solution, etc. For each match, reports the radius mod lines, a best-effort category (transform / grant / multiplier / other), and the allocated nodes in the jewel's radius. Useful for build-comparison and for noticing when a radius jewel is socketed but not actually affecting much of the tree. PoB already applies the numeric effect in lua_get_stats totals; this tool surfaces WHICH jewels and WHICH nodes so the caller can reason about scope.",
+      "description": "Scan equipped jewels against the exact active native tree and weapon set. For PoE2, report supported Time-Lost node-type targets and the selected Controlled Metamorphosis ring, including inner/outer bounds, eligible allocated targets and eligible unallocated nodes. Inactive sockets and unavailable or ambiguous rules are explicit. This is node-scope reporting, not a numeric effect or jewel-limit calculation. Timeless conquest and attribute thresholds have separate queries.",
       "schema": {
         "type": "object",
         "properties": {}
       },
-      "status": "not_audited",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "Checkpoint2: dedicated unit contracts plus representative MCP/native/source checks. See docs/poe2/README.md and tests; unsupported or unverified mechanics remain explicit."
+      ]
     },
     {
       "server": "pob",
@@ -3183,8 +3336,10 @@
           "node_id"
         ]
       },
-      "status": "not_audited",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "Checkpoint2: dedicated unit contracts plus representative MCP/native/source checks. See docs/poe2/README.md and tests; unsupported or unverified mechanics remain explicit."
+      ]
     },
     {
       "server": "pob",
@@ -3233,13 +3388,15 @@
       "server": "pob",
       "group": "getToolSchemas",
       "name": "find_jewel_affected_nodes",
-      "description": "Identify which allocated passive nodes are being TRANSFORMED in-game by socketed Timeless Jewels (Lethal Pride, Glorious Vanity, Militant Faith, Brutal Restraint, Elegant Hubris). Phase-1 scope: identifies AFFECTED nodes by computing each Timeless Jewel's radius and listing the allocated nodes inside it — does NOT yet render the transformed stats. Primary use case: when an in-game tooltip doesn't match `get_tree_node` output, this tool answers \"is the discrepancy attributable to a jewel?\" and prevents false patches (the Endurance/Lethal-Pride case from 2026-05-25). Requires PoB Lua client (live TCP build or loaded XML).",
+      "description": "Read-only Timeless jewel awareness for the current native tree and weapon set. Identifies supported PoE1 jewels and catalog-verified PoE2 Heroic Tragedy / Undying Hate, including seed, leader and native radius. Reports geometric candidates and current get_node_state evidence for up to 30 allocated candidates, with explicit unread or unavailable coverage. Conquest metadata does not prove complete seed-dependent transformation support. No transformations are calculated independently.",
       "schema": {
         "type": "object",
         "properties": {}
       },
-      "status": "not_audited",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "Checkpoint2: dedicated unit contracts plus representative MCP/native/source checks. See docs/poe2/README.md and tests; unsupported or unverified mechanics remain explicit."
+      ]
     },
     {
       "server": "pob",
@@ -3278,8 +3435,10 @@
           "build_name"
         ]
       },
-      "status": "not_audited",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "Checkpoint2: dedicated unit contracts plus representative MCP/native/source checks. See docs/poe2/README.md and tests; unsupported or unverified mechanics remain explicit."
+      ]
     },
     {
       "server": "pob",
@@ -3652,8 +3811,10 @@
           }
         }
       },
-      "status": "not_audited",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "Checkpoint2: dedicated unit contracts plus representative MCP/native/source checks. See docs/poe2/README.md and tests; unsupported or unverified mechanics remain explicit."
+      ]
     },
     {
       "server": "trade",
@@ -3664,7 +3825,7 @@
       "evidence": [
         "poe-trade-mcp/PORT_REPORT.md; real anonymous source probes plus32package tests, not every argument/capability."
       ],
-      "description": "Fetch a public PoB2 snapshot: equipment sets, skills, passives, configuration, calculated stats and source age. Requires optional browser support.",
+      "description": "Fetch a public PoB2 snapshot: equipment sets, skills, passives, configuration, calculated stats and source age. Requires optional browser support. source=oauth instead returns official character JSON, only with explicit confirm_oauth and configured enablement.",
       "schema": {
         "type": "object",
         "properties": {
@@ -3685,6 +3846,18 @@
             "type": "string",
             "minLength": 1,
             "description": "Exact source slug, e.g. forbiddenrites. Never inferred from a league name."
+          },
+          "source": {
+            "type": "string",
+            "enum": [
+              "public",
+              "oauth"
+            ],
+            "default": "public"
+          },
+          "confirm_oauth": {
+            "type": "boolean",
+            "default": false
           }
         },
         "additionalProperties": false
@@ -4229,19 +4402,34 @@
       "name": "poe_auth",
       "source": "poe-trade-mcp/poe_stash.py",
       "line": 65,
-      "status": "not_implemented",
+      "status": "partial",
       "evidence": [
-        "poe-trade-mcp/PORT_REPORT.md lists the exact implementation/external-source gap; this tool is discovered but not restored."
+        "poe-trade-mcp/OAUTH_REPORT.md: implemented and74offline tests pass; real client registration/authorization/API response unverified."
       ],
-      "description": "Not implemented in this bounded PoE2 port; see PORT_REPORT.md for preserved originals and exact API evidence.",
+      "description": "Default: local OAuth status/configuration requirements. action=authorize starts the registered-public-client PKCE flow only with confirm=true and POE_OAUTH_ENABLED=1. Never supply tokens in tool arguments.",
       "schema": {
         "type": "object",
         "properties": {
-          "client_id": {
+          "action": {
             "type": "string",
-            "description": "Your PoE developer app client_id. Overrides POE_CLIENT_ID env var."
+            "enum": [
+              "status",
+              "authorize"
+            ],
+            "default": "status"
+          },
+          "confirm": {
+            "type": "boolean",
+            "default": false
+          },
+          "timeout": {
+            "type": "integer",
+            "minimum": 10,
+            "maximum": 180,
+            "default": 120
           }
-        }
+        },
+        "additionalProperties": false
       },
       "discovery": "verified via MCP1.30.0 stdio"
     },
@@ -4252,12 +4440,13 @@
       "line": 84,
       "status": "partial",
       "evidence": [
-        "poe-trade-mcp/tests and PORT_REPORT.md; clipboard analysis/capability reporting work, numeric rare valuation and token validation remain unimplemented."
+        "poe-trade-mcp/OAUTH_REPORT.md: implemented and74offline tests pass; real client registration/authorization/API response unverified."
       ],
-      "description": "Report audited official PoE2 OAuth capability and this port status without reading tokens or making requests.",
+      "description": "Inspect only the explicitly configured owned OAuth store. Report local expiry/scope/state without token values, refresh, introspection, or any network request.",
       "schema": {
         "type": "object",
-        "properties": {}
+        "properties": {},
+        "additionalProperties": false
       },
       "discovery": "verified via MCP1.30.0 stdio"
     },
@@ -5681,27 +5870,45 @@
         "additionalProperties": false
       },
       "discovery": "verified via MCP1.30.0 stdio"
+    },
+    {
+      "server": "trade",
+      "name": "list_oauth_characters",
+      "group": "runtime-discovered",
+      "status": "partial",
+      "evidence": [
+        "poe-trade-mcp/OAUTH_REPORT.md: implemented and74offline tests pass; real client registration/authorization/API response unverified."
+      ],
+      "description": "Explicit private read of the authorized account's PoE2 character list. Requires confirm_oauth=true and POE_OAUTH_ENABLED=1. No private response is saved.",
+      "schema": {
+        "type": "object",
+        "properties": {
+          "confirm_oauth": {
+            "type": "boolean",
+            "default": false
+          }
+        },
+        "additionalProperties": false
+      }
     }
   ],
-  "updated_at": "2026-09-15T15:42:22.984342+00:00",
+  "updated_at": "2026-09-15T18:03:41.603218+00:00",
   "discovery_counts": {
     "pob_trade_disabled": 126,
     "pob_source_schemas": 135,
-    "trade": 39,
+    "trade": 40,
     "data": 26
   },
   "completion": "incomplete; discovery, unit tests and selected live calls are separate evidence",
   "verification_checkpoint": {
+    "typescript_full": "943 passed,39 skipped; no failures",
+    "typescript_native_live": "18 passed in7suites",
+    "python_api_installer_source": "92 passed",
     "python_data": "54 passed",
-    "python_trade": "32 passed",
-    "lua_installer_boundaries": "61 passed with installed PoB2 source",
-    "typescript_full": "655 passed, 10 failed, 97 skipped",
-    "typescript_native": "6 passed (explicit opt-in)",
-    "native_mutations": "7 passed with semantic XML and numeric stats restored",
-    "remaining_typescript_failures": [
-      "radiusEffectJewelService",
-      "thresholdJewelService",
-      "atlasTreeDataLoader"
-    ]
+    "python_trade_oauth": "74 passed",
+    "native_mutations": "7 passed with semantic XML/numeric rollback",
+    "native_class_creation": "8 class/ascendancy pairs and original restoration passed",
+    "mcp_configuration": "explicit writes,zero values,rejected batch and game-tagged preset patches verified",
+    "codex_config": "project config recognized by CLI; current active tool catalog has not reloaded"
   }
 }

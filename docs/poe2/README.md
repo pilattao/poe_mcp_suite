@@ -72,10 +72,12 @@ free port if needed. The API remains bound to 127.0.0.1.
 
 ## Limitations under active work
 
-Full handler/mutation/optimizer coverage, protected account APIs, PoE2-only
-crafting semantics, legacy PoE1-only features, atlas sources, full installation
-flow and a clean-clone acceptance run are not yet complete. Unsupported messages
-are recorded as gaps, never as restored functionality. Personal evidence and
+Full optimizer/handler coverage, real OAuth authorization, protected stash access,
+legacy PoE1-only features and complete end-to-end client deployment remain under
+review. Unsupported messages are recorded as gaps, never as restored functionality.
+The public character source remains the default. The OAuth character client is
+implemented and tested offline; no real token or account request was used.
+See `poe-trade-mcp/OAUTH_REPORT.md` for exact live-check requirements. Personal evidence and
 account/build snapshots stay outside version control.
 
 ## Sources
@@ -85,3 +87,27 @@ account/build snapshots stay outside version control.
 - [PoE2 economy](https://poe.ninja/poe2/economy): its PoE2 index-state and
   exchange/stash response schemas were inspected directly on 2026-09-15.
 - [PoE2DB](https://poe2db.tw/us/) and [PoE2 Wiki](https://www.poe2wiki.net/wiki/Path_of_Exile_2_Wiki).
+
+## Latest verified checkpoint (2026-09-15)
+
+- TypeScript: 943 passed, 39 skipped; a separate opt-in native/live selection
+  passed 18 checks. Skipped cases are not counted as restored capabilities.
+- Python: 92 Lua/installer/source checks, 54 data-server checks, 74 trade/OAuth checks.
+- All 1,074 checked-out PoB2 Lua files compile with stock LuaJIT. Source/release
+  fixture differences are explicit. The fork normalizes source syntax without
+  changing the tested native calculator's numerical behavior.
+- API 1.2 confirms queued build opens by request ID. Eight native PoE2
+  class/ascendancy creation pairs and restoration to the original test build passed.
+- Live config reads/writes, zero values, rejected batches and game-scoped preset
+  patches passed through MCP, followed by restoring XML/config/stats.
+- PoE2 atlas: RePoE export version 4.5.5.2, 575 nodes, 586 edges and seven components.
+  Paths describe graph distance; selector effects and actual allocation remain unknown.
+- Core crafting: plain one-step exalt/augment/regal estimates from a validated CoE
+  cache. PoB2 eligibility flags are never used as probability weights. Repeated
+  attempts, costs, special effects and unsupported operations remain unmodeled.
+- Context usage now requires an explicit client/session source; no automatic
+  history scanning. Recorded token usage is separate from current context occupancy.
+
+The initial clean remote clone resolved every submodule, installed Python
+requirements and built TypeScript. It exposed source syntax and fixture issues
+which were fixed; final clean-clone checks must use the updated pins.

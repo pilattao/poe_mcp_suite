@@ -22,6 +22,13 @@ with socket.create_connection(('127.0.0.1',args.port),timeout=5) as s:
   if not raw:raise RuntimeError('Disconnected during '+action)
   r=json.loads(raw)
   if not r.get('ok') and not allow_error:raise RuntimeError(action+': '+str(r.get('error')))
+  if action=='open_build_xml' and r.get('requestId'):
+   deadline=time.time()+30
+   while time.time()<deadline:
+    status=call('get_build_open_status',{'requestId':r['requestId']})
+    if status.get('ready'):return status
+    time.sleep(.05)
+   raise TimeoutError('Native build open did not finish')
   return r
  assert call('get_build_info')['info']['name']==args.owned_build_name
  original=call('export_build_xml')['xml'];(out/'before.xml').write_text(original);stats=call('get_stats')['stats'];records=[]

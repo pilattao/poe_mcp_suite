@@ -54,11 +54,14 @@ def backend():
       data = {itemMods={Runes={}},flavourText={}, misc={MaxEnemyLevel=85}, gems={}, gemForSkill={}, skills={}, gemForBaseName={}}
       function LoadModule(name) if name=='Modules/ConfigOptions' then return registry end return {} end
       function new(name, ...)
-        if name=='ModList' then return {NewMod=function() end} end
+        if name=='ModList' then return {NewMod=function() end,ModList=function(self) return self end} end
         error('Unexpected constructor: '..name)
       end
     ''')
     lua.execute("registry = {\n" + "\n".join(config_entry(n) for n in ["enemyLevel", "resistancePenalty", "usePowerCharges"]) + "\n}")
+    # Development PoB2 loads the same registry with require; releases may use LoadModule.
+    lua.globals().test_source_root = str(INSTALLED)
+    lua.execute("package.path = test_source_root .. '/?.lua;' .. package.path; package.loaded['Modules.ConfigOptions'] = registry")
     for path in ["Classes/UndoHandler.lua", "Modules/CalcTools.lua", "Classes/ConfigTab.lua", "Classes/SkillsTab.lua", "Classes/ItemsTab.lua", "Classes/ItemSlotControl.lua"]:
         lua.execute((INSTALLED / path).read_text())
     lua.execute('''
@@ -83,7 +86,7 @@ def backend():
       st.SetDisplayGroup=function(self,g) self.displayGroup=g end
       st.socketGroupList=st.skillSets[3].socketGroupList
       build.skillsTab=st; st:ResetUndo()
-      local it=setmetatable({build=build,slots={},orderedSlots={},items={},itemOrderList={},
+      local it=setmetatable({build=build,slots={},runeSlots={},orderedSlots={},items={},itemOrderList={},
         itemSets={},itemSetOrderList={},undo={},redo={},modFlag=false}, {__index=classes.ItemsTab})
       build.itemsTab=it
       for _,name in ipairs({'Amulet','Belt','Weapon 1','Weapon 2','Weapon 1 Swap','Weapon 2 Swap','Flask 1','Flask 2','Charm 1','Charm 2','Charm 3'}) do
